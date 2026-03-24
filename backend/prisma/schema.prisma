@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  AGENT
+  ADMIN
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum NotificationType {
+  TICKET_CREATED
+  TICKET_ASSIGNED
+  TICKET_MESSAGE
+  TICKET_STATUS_CHANGED
+}
+
+enum ActivityType {
+  TICKET_CREATED
+  TICKET_ASSIGNED
+  TICKET_MESSAGE
+  TICKET_STATUS_CHANGED
+}
+
+model User {
+  id                  String             @id @default(cuid())
+  name                String
+  email               String             @unique
+  passwordHash        String
+  role                UserRole           @default(CUSTOMER)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  createdTickets      Ticket[]           @relation("CreatedTickets")
+  assignedTickets     Ticket[]           @relation("AssignedTickets")
+  ticketMessages      TicketMessage[]
+  notifications       Notification[]
+  ticketActivities    TicketActivity[]
+}
+
+model Ticket {
+  id            String             @id @default(cuid())
+  title         String
+  description   String
+  status        TicketStatus       @default(OPEN)
+  customerId    String
+  assigneeId    String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  customer      User               @relation("CreatedTickets", fields: [customerId], references: [id], onDelete: Cascade)
+  assignee      User?              @relation("AssignedTickets", fields: [assigneeId], references: [id], onDelete: SetNull)
+  messages      TicketMessage[]
+  notifications Notification[]
+  activities    TicketActivity[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([assigneeId])
+  @@index([updatedAt])
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@index([authorId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  ticketId  String?
+  type      NotificationType
+  payload   Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticket    Ticket?          @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([ticketId])
+}
+
+model TicketActivity {
+  id          String       @id @default(cuid())
+  ticketId     String
+  actorUserId  String
+  type         ActivityType
+  payload      Json?
+  createdAt    DateTime    @default(now())
+  ticket       Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actorUser    User        @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@index([actorUserId])
+}
+
