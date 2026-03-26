@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: support
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -32,7 +32,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/support
       REDIS_URL: redis://redis:6379
       JWT_SECRET: super-secret-key
-      FRONTEND_URL: http://localhost:3000
+      FRONTEND_URL: http://localhost:3002
     ports:
       - "3001:3001"
     depends_on:
@@ -50,7 +50,7 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:3001/api
       NEXT_PUBLIC_SOCKET_URL: http://localhost:3001/realtime
     ports:
-      - "3000:3000"
+      - "3002:3000"
     depends_on:
       - backend
 

@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Global, Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TOKENS } from "../../core/application/ports/ports";
@@ -6,6 +6,7 @@ import { BcryptPasswordHasher, JwtTokenService } from "../../core/infrastructure
 import { LoginUseCase, RegisterUseCase } from "../../core/application/use-cases/auth.use-cases";
 import { AuthController } from "./auth.controller";
 
+@Global()
 @Module({
   imports: [
     ConfigModule,

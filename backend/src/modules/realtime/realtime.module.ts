@@ -1,10 +1,13 @@
-import { Module } from "@nestjs/common";
+import { Global, Module } from "@nestjs/common";
 import { TOKENS } from "../../core/application/ports/ports";
 import { RedisDomainEventPublisher, RedisDomainEventsSubscriber } from "../../core/infrastructure/messaging/redis-pubsub.publisher";
 import { SocketBroadcastAdapter } from "../../core/infrastructure/realtime/socket-broadcast.adapter";
+import { AuthModule } from "../auth/auth.module";
 import { TicketsGateway } from "./tickets.gateway";
 
+@Global()
 @Module({
+  imports: [AuthModule],
   providers: [
     TicketsGateway,
     SocketBroadcastAdapter,
