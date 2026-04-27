@@ -19,8 +19,15 @@ import {
   GetDashboardMetricsUseCase,
   GetTicketUseCase,
   ListTicketsUseCase,
+  ListWhatsappInboxUseCase,
 } from "../../core/application/use-cases/tickets/tickets.use-cases";
-import { AssignTicketDto, ChangeTicketStatusDto, CreateTicketDto, ListTicketsQueryDto } from "./dto/tickets.dto";
+import {
+  AssignTicketDto,
+  ChangeTicketStatusDto,
+  CreateTicketDto,
+  InboxWhatsappQueryDto,
+  ListTicketsQueryDto,
+} from "./dto/tickets.dto";
 
 @Controller("tickets")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -32,6 +39,7 @@ export class TicketsController {
     private readonly assignTicketUseCase: AssignTicketUseCase,
     private readonly changeTicketStatusUseCase: ChangeTicketStatusUseCase,
     private readonly getDashboardMetricsUseCase: GetDashboardMetricsUseCase,
+    private readonly listWhatsappInboxUseCase: ListWhatsappInboxUseCase,
   ) {}
 
   @Post()
@@ -55,6 +63,17 @@ export class TicketsController {
   @Roles("AGENT", "ADMIN")
   metrics() {
     return this.getDashboardMetricsUseCase.execute();
+  }
+
+  @Get("inbox/whatsapp")
+  @Roles("AGENT", "ADMIN")
+  inboxWhatsapp(@Query() query: InboxWhatsappQueryDto) {
+    return this.listWhatsappInboxUseCase.execute({
+      from: query.from ? new Date(query.from) : undefined,
+      to: query.to ? new Date(query.to) : undefined,
+      status: query.status,
+      search: query.search,
+    });
   }
 
   @Get(":id")

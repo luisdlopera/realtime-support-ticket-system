@@ -27,6 +27,6 @@ import { AuthController } from "./auth.controller";
     { provide: TOKENS.PASSWORD_HASHER, useExisting: BcryptPasswordHasher },
     { provide: TOKENS.TOKEN_SERVICE, useExisting: JwtTokenService },
   ],
-  exports: [TOKENS.TOKEN_SERVICE],
+  exports: [TOKENS.PASSWORD_HASHER, TOKENS.TOKEN_SERVICE, JwtModule],
 })
 export class AuthModule {}

@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+dist/
+out/
+build/
+
+# Coverage
+coverage/
+
+# Generated files
+*.generated.*
+*.d.ts
+
+# Cache
+.cache/
+
+# Logs
+*.log
+
+# Environment
+.env*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Agents/skills (external content)
+.agents/
+.codex/

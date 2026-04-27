@@ -24,3 +24,21 @@ export class ListTicketsQueryDto {
   @IsOptional()
   status?: TicketStatus;
 }
+
+export class InboxWhatsappQueryDto {
+  @IsOptional()
+  @IsString()
+  from?: string;
+
+  @IsOptional()
+  @IsString()
+  to?: string;
+
+  @IsIn(TICKET_STATUSES)
+  @IsOptional()
+  status?: TicketStatus;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+}

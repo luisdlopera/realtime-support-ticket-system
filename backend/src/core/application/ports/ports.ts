@@ -3,11 +3,16 @@ import {
   TicketMessageEntity,
   UserEntity,
   TicketStatus,
+  TicketChannel,
+  MessageType,
+  InboxWhatsappRow,
+  WhatsappContactEntity,
 } from "../../domain/entities/domain.types";
 import { DomainEvent } from "../../domain/events/domain-event.types";
 
 export const TOKENS = {
   USER_REPOSITORY: "USER_REPOSITORY",
+  WHATSAPP_CONTACT_REPOSITORY: "WHATSAPP_CONTACT_REPOSITORY",
   TICKET_REPOSITORY: "TICKET_REPOSITORY",
   MESSAGE_REPOSITORY: "MESSAGE_REPOSITORY",
   NOTIFICATION_REPOSITORY: "NOTIFICATION_REPOSITORY",
@@ -15,7 +20,22 @@ export const TOKENS = {
   SOCKET_BROADCAST_PORT: "SOCKET_BROADCAST_PORT",
   PASSWORD_HASHER: "PASSWORD_HASHER",
   TOKEN_SERVICE: "TOKEN_SERVICE",
+  R2_STORAGE: "R2_STORAGE",
 } as const;
+
+export interface CreateMessageData {
+  ticketId: string;
+  authorId: string;
+  messageType: MessageType;
+  text?: string | null;
+  r2ObjectKey?: string | null;
+  mediaMimeType?: string | null;
+  fileName?: string | null;
+  whatsappMessageId?: string | null;
+  replyToId?: string | null;
+  readAt?: Date | null;
+  waDelivery?: string | null;
+}
 
 export interface UserRepositoryPort {
   create(data: { name: string; email: string; passwordHash: string; role: string }): Promise<UserEntity>;
@@ -24,18 +44,37 @@ export interface UserRepositoryPort {
   findAgents(): Promise<Pick<UserEntity, "id" | "name" | "email" | "role">[]>;
 }
 
+export interface WhatsappContactRepositoryPort {
+  findByPhone(phoneE164: string): Promise<WhatsappContactEntity | null>;
+  findById(id: string): Promise<WhatsappContactEntity | null>;
+  createForUser(data: { phoneE164: string; profileName: string | null; userId: string }): Promise<WhatsappContactEntity>;
+}
+
+export interface CreateTicketData {
+  title: string;
+  description: string;
+  customerId: string;
+  channel: TicketChannel;
+  whatsappContactId?: string | null;
+}
+
 export interface TicketRepositoryPort {
-  create(data: { title: string; description: string; customerId: string }): Promise<TicketEntity>;
+  create(data: CreateTicketData): Promise<TicketEntity>;
   list(filters: { status?: TicketStatus; customerId?: string; assigneeId?: string }): Promise<TicketEntity[]>;
   findById(id: string): Promise<TicketEntity | null>;
   assign(ticketId: string, assigneeId: string): Promise<TicketEntity>;
   changeStatus(ticketId: string, status: TicketStatus): Promise<TicketEntity>;
   getMetrics(): Promise<{ open: number; inProgress: number; resolved: number; closed: number; unassigned: number }>;
+  findOpenWhatsappByContact(whatsappContactId: string): Promise<TicketEntity | null>;
+  listWhatsappInbox(params: { from?: Date; to?: Date; status?: TicketStatus; search?: string }): Promise<InboxWhatsappRow[]>;
 }
 
 export interface MessageRepositoryPort {
-  create(data: { ticketId: string; authorId: string; content: string }): Promise<TicketMessageEntity>;
+  create(data: CreateMessageData): Promise<TicketMessageEntity>;
   listByTicket(ticketId: string): Promise<TicketMessageEntity[]>;
+  findByWhatsappMessageId(waId: string): Promise<TicketMessageEntity | null>;
+  markInboundAsRead(ticketId: string): Promise<number>;
+  countUnreadInTicket(ticketId: string, customerUserId: string): Promise<number>;
 }
 
 export interface NotificationRepositoryPort {
@@ -70,4 +109,10 @@ export interface PasswordHasherPort {
 export interface TokenServicePort {
   sign(payload: { sub: string; role: string; email: string }): string;
   verify(token: string): { sub: string; role: string; email: string };
+}
+
+export interface R2StoragePort {
+  putObject(key: string, body: Buffer, contentType: string): Promise<void>;
+  getPresignedGetUrl(key: string, expiresSeconds: number): Promise<string>;
+  buildKey(ticketId: string, fileName: string): string;
 }

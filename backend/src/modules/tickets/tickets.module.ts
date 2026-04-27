@@ -6,6 +6,7 @@ import {
   GetDashboardMetricsUseCase,
   GetTicketUseCase,
   ListTicketsUseCase,
+  ListWhatsappInboxUseCase,
 } from "../../core/application/use-cases/tickets/tickets.use-cases";
 import { TicketsController } from "./tickets.controller";
 
@@ -18,6 +19,8 @@ import { TicketsController } from "./tickets.controller";
     AssignTicketUseCase,
     ChangeTicketStatusUseCase,
     GetDashboardMetricsUseCase,
+    ListWhatsappInboxUseCase,
   ],
+  exports: [CreateTicketUseCase, GetTicketUseCase, ListWhatsappInboxUseCase, ListTicketsUseCase, ChangeTicketStatusUseCase],
 })
 export class TicketsModule {}

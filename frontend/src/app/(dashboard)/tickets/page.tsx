@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { Ticket } from "@/types";
 import { StatusBadge } from "@/components/tickets/status-badge";
 import { useSocket } from "@/lib/hooks/useSocket";
+import { Input, Button, Card, CardHeader, CardBody } from "@heroui/react";
 
 export default function TicketsPage() {
   const socket = useSocket();
@@ -40,46 +41,70 @@ export default function TicketsPage() {
   }
 
   return (
-    <main className="space-y-6">
-      <section className="card p-4">
-        <h2 className="mb-4 text-lg font-semibold">Create ticket</h2>
-        <form className="grid gap-3 md:grid-cols-3" onSubmit={createTicket}>
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Title"
-            className="rounded-md border border-gray-700 bg-gray-900 px-3 py-2"
-          />
-          <input
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Description"
-            className="rounded-md border border-gray-700 bg-gray-900 px-3 py-2"
-          />
-          <button type="submit" className="rounded-md bg-indigo-600 px-4 py-2 font-medium hover:bg-indigo-500">
-            Create
-          </button>
-        </form>
-      </section>
+    <main className="space-y-4 sm:space-y-6">
+      <Card className="p-1 sm:p-2">
+        <CardHeader className="pb-2">
+          <h2 className="text-base font-bold sm:text-lg">Crear ticket</h2>
+        </CardHeader>
+        <CardBody className="p-2 sm:p-3">
+          <form
+            className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:items-end"
+            onSubmit={createTicket}
+          >
+            <Input
+              label="Título"
+              value={title}
+              onValueChange={setTitle}
+              placeholder="Ej: Problema con la cuenta"
+              variant="bordered"
+              size="sm"
+            />
+            <Input
+              label="Descripción"
+              value={description}
+              onValueChange={setDescription}
+              placeholder="Explica brevemente..."
+              variant="bordered"
+              size="sm"
+            />
+            <Button type="submit" color="primary" className="font-bold h-10 sm:h-12" size="sm">
+              Crear ticket
+            </Button>
+          </form>
+        </CardBody>
+      </Card>
 
-      <section className="card p-4">
-        <h2 className="mb-4 text-lg font-semibold">Tickets</h2>
-        <div className="space-y-2">
+      <Card className="p-1 sm:p-2">
+        <CardHeader className="pb-2">
+          <h2 className="text-base font-bold sm:text-lg">Listado de Tickets</h2>
+        </CardHeader>
+        <CardBody className="space-y-2 sm:space-y-3 p-2 sm:p-3">
+          {tickets.length === 0 && (
+            <p className="text-zinc-500 text-center py-6 sm:py-8 text-sm">
+              No hay tickets disponibles
+            </p>
+          )}
           {tickets.map((ticket) => (
             <Link
               key={ticket.id}
               href={`/tickets/${ticket.id}`}
-              className="flex items-center justify-between rounded-md border border-gray-700 p-3 hover:bg-gray-800"
+              className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 sm:p-4 transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
             >
-              <div>
-                <p className="font-medium">{ticket.title}</p>
-                <p className="text-sm text-gray-400">{ticket.description}</p>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-zinc-900 dark:text-zinc-100 text-sm sm:text-base truncate">
+                  {ticket.title}
+                </p>
+                <p className="text-xs sm:text-sm text-zinc-500 line-clamp-1">
+                  {ticket.description}
+                </p>
               </div>
-              <StatusBadge status={ticket.status} />
+              <div className="flex-shrink-0">
+                <StatusBadge status={ticket.status} />
+              </div>
             </Link>
           ))}
-        </div>
-      </section>
+        </CardBody>
+      </Card>
     </main>
   );
 }

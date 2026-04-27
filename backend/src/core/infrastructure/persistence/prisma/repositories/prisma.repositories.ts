@@ -1,13 +1,24 @@
 import { Injectable } from "@nestjs/common";
-import { NotificationType, TicketStatus as PrismaTicketStatus, UserRole as PrismaUserRole } from "@prisma/client";
+import {
+  NotificationType,
+  TicketStatus as PrismaTicketStatus,
+  UserRole as PrismaUserRole,
+  Prisma,
+  MessageType as PrismaMessageType,
+  TicketChannel as PrismaChannel,
+} from "@prisma/client";
 import { PrismaService } from "../prisma.service";
 import {
+  CreateMessageData,
+  CreateTicketData,
   MessageRepositoryPort,
   NotificationRepositoryPort,
   TicketRepositoryPort,
   UserRepositoryPort,
+  WhatsappContactRepositoryPort,
 } from "../../../../application/ports/ports";
-import { TicketStatus, UserRole } from "../../../../domain/entities/domain.types";
+import { TicketStatus, UserRole, MessageType, TicketChannel, InboxWhatsappRow } from "../../../../domain/entities/domain.types";
+import { mapTicketEntity, mapMessageEntity, mapWhatsappRow } from "./prisma.mappers";
 
 @Injectable()
 export class PrismaUserRepository implements UserRepositoryPort {
@@ -40,40 +51,73 @@ export class PrismaUserRepository implements UserRepositoryPort {
 }
 
 @Injectable()
-export class PrismaTicketRepository implements TicketRepositoryPort {
+export class PrismaWhatsappContactRepository implements WhatsappContactRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(data: { title: string; description: string; customerId: string }) {
-    return this.prisma.ticket.create({ data });
-  }
-
-  list(filters: { status?: TicketStatus; customerId?: string; assigneeId?: string }) {
-    return this.prisma.ticket.findMany({
-      where: {
-        status: filters.status ? (filters.status as PrismaTicketStatus) : undefined,
-        customerId: filters.customerId,
-        assigneeId: filters.assigneeId,
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+  findByPhone(phoneE164: string) {
+    return this.prisma.whatsappContact.findUnique({ where: { phoneE164 } });
   }
 
   findById(id: string) {
-    return this.prisma.ticket.findUnique({ where: { id } });
+    return this.prisma.whatsappContact.findUnique({ where: { id } });
+  }
+
+  createForUser(data: { phoneE164: string; profileName: string | null; userId: string }) {
+    return this.prisma.whatsappContact.create({ data });
+  }
+}
+
+@Injectable()
+export class PrismaTicketRepository implements TicketRepositoryPort {
+  constructor(private readonly prisma: PrismaService) {}
+
+  create(data: CreateTicketData) {
+    return this.prisma.ticket
+      .create({
+        data: {
+          title: data.title,
+          description: data.description,
+          customerId: data.customerId,
+          channel: data.channel,
+          whatsappContactId: data.whatsappContactId ?? undefined,
+        },
+      })
+      .then(mapTicketEntity);
+  }
+
+  list(filters: { status?: TicketStatus; customerId?: string; assigneeId?: string }) {
+    return this.prisma.ticket
+      .findMany({
+        where: {
+          status: filters.status ? (filters.status as PrismaTicketStatus) : undefined,
+          customerId: filters.customerId,
+          assigneeId: filters.assigneeId,
+        },
+        orderBy: { updatedAt: "desc" },
+      })
+      .then((rows) => rows.map(mapTicketEntity));
+  }
+
+  findById(id: string) {
+    return this.prisma.ticket.findUnique({ where: { id } }).then((t) => (t ? mapTicketEntity(t) : null));
   }
 
   async assign(ticketId: string, assigneeId: string) {
-    return this.prisma.ticket.update({
-      where: { id: ticketId },
-      data: { assigneeId, status: PrismaTicketStatus.IN_PROGRESS },
-    });
+    return mapTicketEntity(
+      await this.prisma.ticket.update({
+        where: { id: ticketId },
+        data: { assigneeId, status: PrismaTicketStatus.IN_PROGRESS },
+      }),
+    );
   }
 
   changeStatus(ticketId: string, status: TicketStatus) {
-    return this.prisma.ticket.update({
-      where: { id: ticketId },
-      data: { status: status as PrismaTicketStatus },
-    });
+    return this.prisma.ticket
+      .update({
+        where: { id: ticketId },
+        data: { status: status as PrismaTicketStatus },
+      })
+      .then(mapTicketEntity);
   }
 
   async getMetrics() {
@@ -97,20 +141,123 @@ export class PrismaTicketRepository implements TicketRepositoryPort {
     }
     return metrics;
   }
+
+  async findOpenWhatsappByContact(whatsappContactId: string) {
+    const t = await this.prisma.ticket.findFirst({
+      where: {
+        channel: PrismaChannel.WHATSAPP,
+        whatsappContactId,
+        status: { in: [PrismaTicketStatus.OPEN, PrismaTicketStatus.IN_PROGRESS] },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+    return t ? mapTicketEntity(t) : null;
+  }
+
+  async listWhatsappInbox(params: { from?: Date; to?: Date; status?: TicketStatus; search?: string }): Promise<InboxWhatsappRow[]> {
+    const and: Prisma.TicketWhereInput[] = [
+      { channel: PrismaChannel.WHATSAPP },
+      { whatsappContactId: { not: null } },
+    ];
+
+    if (params.from) {
+      and.push({ updatedAt: { gte: params.from } });
+    }
+    if (params.to) {
+      and.push({ updatedAt: { lte: params.to } });
+    }
+    if (params.status) {
+      and.push({ status: params.status as PrismaTicketStatus });
+    }
+    if (params.search && params.search.trim()) {
+      const s = params.search.trim();
+      and.push({
+        OR: [
+          { title: { contains: s, mode: "insensitive" } },
+          { description: { contains: s, mode: "insensitive" } },
+          { whatsappContact: { is: { phoneE164: { contains: s } } } },
+          { whatsappContact: { is: { profileName: { contains: s, mode: "insensitive" } } } },
+        ],
+      });
+    }
+
+    const tickets = await this.prisma.ticket.findMany({
+      where: { AND: and },
+      orderBy: { updatedAt: "desc" },
+      include: { whatsappContact: true, messages: { orderBy: { createdAt: "desc" }, take: 1 } },
+    });
+
+    const rows: InboxWhatsappRow[] = [];
+    for (const t of tickets) {
+      const lastMessage = t.messages[0] ? mapMessageEntity(t.messages[0]) : null;
+      const unread = await this.prisma.ticketMessage.count({
+        where: { ticketId: t.id, authorId: t.customerId, readAt: null },
+      });
+      if (!t.whatsappContact) continue;
+      rows.push(
+        mapWhatsappRow(
+          mapTicketEntity(t),
+          lastMessage,
+          unread,
+          t.whatsappContact.phoneE164,
+          t.whatsappContact.profileName,
+        ),
+      );
+    }
+    return rows;
+  }
 }
 
 @Injectable()
 export class PrismaMessageRepository implements MessageRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(data: { ticketId: string; authorId: string; content: string }) {
-    return this.prisma.ticketMessage.create({ data });
+  create(data: CreateMessageData) {
+    return this.prisma.ticketMessage
+      .create({
+        data: {
+          ticketId: data.ticketId,
+          authorId: data.authorId,
+          messageType: (data.messageType as PrismaMessageType) ?? PrismaMessageType.TEXT,
+          text: data.text ?? null,
+          r2ObjectKey: data.r2ObjectKey ?? null,
+          mediaMimeType: data.mediaMimeType ?? null,
+          fileName: data.fileName ?? null,
+          whatsappMessageId: data.whatsappMessageId ?? null,
+          replyToId: data.replyToId ?? null,
+          readAt: data.readAt ?? null,
+          waDelivery: data.waDelivery ?? null,
+        },
+      })
+      .then(mapMessageEntity);
   }
 
   listByTicket(ticketId: string) {
-    return this.prisma.ticketMessage.findMany({
-      where: { ticketId },
-      orderBy: { createdAt: "asc" },
+    return this.prisma.ticketMessage
+      .findMany({
+        where: { ticketId },
+        orderBy: { createdAt: "asc" },
+      })
+      .then((list) => list.map(mapMessageEntity));
+  }
+
+  findByWhatsappMessageId(waId: string) {
+    return this.prisma.ticketMessage.findUnique({ where: { whatsappMessageId: waId } }).then((m) => (m ? mapMessageEntity(m) : null));
+  }
+
+  async markInboundAsRead(ticketId: string): Promise<number> {
+    const ticket = await this.prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) return 0;
+    const res = await this.prisma.ticketMessage.updateMany({
+      where: { ticketId, authorId: ticket.customerId, readAt: null },
+      data: { readAt: new Date() },
+    });
+    return res.count;
+  }
+
+  countUnreadInTicket(ticketId: string, customerUserId: string) {
+    return this.prisma.ticketMessage.count({
+      where: { ticketId, authorId: customerUserId, readAt: null },
     });
   }
 }

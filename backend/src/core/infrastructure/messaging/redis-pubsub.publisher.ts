@@ -42,7 +42,8 @@ export class RedisDomainEventsSubscriber implements OnModuleInit, OnModuleDestro
       if (
         event.type === "ticket.created" ||
         event.type === "ticket.assigned" ||
-        event.type === "ticket.status.changed"
+        event.type === "ticket.status.changed" ||
+        event.type === "ticket.message"
       ) {
         this.socketBroadcast.toAgents(event.type, event);
       }

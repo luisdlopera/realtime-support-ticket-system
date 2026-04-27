@@ -20,6 +20,19 @@ enum TicketStatus {
   CLOSED
 }
 
+enum TicketChannel {
+  WEB
+  WHATSAPP
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  DOCUMENT
+  AUDIO
+}
+
 enum NotificationType {
   TICKET_CREATED
   TICKET_ASSIGNED
@@ -35,50 +48,78 @@ enum ActivityType {
 }
 
 model User {
-  id                  String             @id @default(cuid())
-  name                String
-  email               String             @unique
-  passwordHash        String
-  role                UserRole           @default(CUSTOMER)
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  createdTickets      Ticket[]           @relation("CreatedTickets")
-  assignedTickets     Ticket[]           @relation("AssignedTickets")
-  ticketMessages      TicketMessage[]
-  notifications       Notification[]
-  ticketActivities    TicketActivity[]
+  id                 String            @id @default(cuid())
+  name               String
+  email              String            @unique
+  passwordHash       String
+  role               UserRole          @default(CUSTOMER)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  createdTickets     Ticket[]          @relation("CreatedTickets")
+  assignedTickets    Ticket[]          @relation("AssignedTickets")
+  ticketMessages     TicketMessage[]
+  notifications      Notification[]
+  ticketActivities   TicketActivity[]
+  whatsappProfile    WhatsappContact?
+}
+
+model WhatsappContact {
+  id            String   @id @default(cuid())
+  phoneE164     String   @unique
+  profileName   String?
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tickets       Ticket[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Ticket {
-  id            String             @id @default(cuid())
-  title         String
-  description   String
-  status        TicketStatus       @default(OPEN)
-  customerId    String
-  assigneeId    String?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  customer      User               @relation("CreatedTickets", fields: [customerId], references: [id], onDelete: Cascade)
-  assignee      User?              @relation("AssignedTickets", fields: [assigneeId], references: [id], onDelete: SetNull)
-  messages      TicketMessage[]
-  notifications Notification[]
-  activities    TicketActivity[]
+  id                 String            @id @default(cuid())
+  title              String
+  description        String
+  status             TicketStatus      @default(OPEN)
+  channel            TicketChannel     @default(WEB)
+  customerId         String
+  assigneeId         String?
+  whatsappContactId  String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  customer           User              @relation("CreatedTickets", fields: [customerId], references: [id], onDelete: Cascade)
+  assignee           User?             @relation("AssignedTickets", fields: [assigneeId], references: [id], onDelete: SetNull)
+  whatsappContact    WhatsappContact?  @relation(fields: [whatsappContactId], references: [id], onDelete: SetNull)
+  messages           TicketMessage[]
+  notifications      Notification[]
+  activities         TicketActivity[]
 
   @@index([status])
   @@index([customerId])
   @@index([assigneeId])
   @@index([updatedAt])
+  @@index([channel, updatedAt])
+  @@index([whatsappContactId])
 }
 
 model TicketMessage {
-  id        String   @id @default(cuid())
-  ticketId  String
-  authorId  String
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(cuid())
+  ticketId           String
+  authorId           String
+  messageType        MessageType  @default(TEXT)
+  /// Body or caption. Empty string when media-only and type != TEXT
+  text               String?
+  r2ObjectKey        String?
+  mediaMimeType      String?
+  fileName           String?
+  whatsappMessageId  String?  @unique
+  replyToId          String?
+  readAt             DateTime?
+  waDelivery         String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  ticket             Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author             User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  replyTo            TicketMessage?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies            TicketMessage[]  @relation("MessageReplies")
 
   @@index([ticketId, createdAt])
   @@index([authorId])
@@ -101,16 +142,15 @@ model Notification {
 }
 
 model TicketActivity {
-  id          String       @id @default(cuid())
-  ticketId     String
-  actorUserId  String
-  type         ActivityType
-  payload      Json?
-  createdAt    DateTime    @default(now())
-  ticket       Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  actorUser    User        @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
+  id            String         @id @default(cuid())
+  ticketId      String
+  actorUserId   String
+  type          ActivityType
+  payload       Json?
+  createdAt     DateTime       @default(now())
+  ticket        Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actorUser     User           @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
 
   @@index([ticketId, createdAt])
   @@index([actorUserId])
 }
-

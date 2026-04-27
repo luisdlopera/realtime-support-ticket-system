@@ -1,7 +1,7 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { v4 as uuidv4 } from "uuid";
 import { TOKENS, DomainEventPublisherPort, TicketRepositoryPort } from "../../ports/ports";
-import { TicketStatus } from "../../../domain/entities/domain.types";
+import { InboxWhatsappRow, TicketChannel, TicketStatus } from "../../../domain/entities/domain.types";
 import { DOMAIN_EVENTS } from "../../../domain/events/domain-events.constants";
 
 @Injectable()
@@ -11,8 +11,20 @@ export class CreateTicketUseCase {
     @Inject(TOKENS.DOMAIN_EVENT_PUBLISHER) private readonly eventPublisher: DomainEventPublisherPort,
   ) {}
 
-  async execute(input: { title: string; description: string; customerId: string }) {
-    const ticket = await this.ticketRepository.create(input);
+  async execute(input: {
+    title: string;
+    description: string;
+    customerId: string;
+    channel?: TicketChannel;
+    whatsappContactId?: string | null;
+  }) {
+    const ticket = await this.ticketRepository.create({
+      title: input.title,
+      description: input.description,
+      customerId: input.customerId,
+      channel: input.channel ?? "WEB",
+      whatsappContactId: input.whatsappContactId ?? null,
+    });
     await this.eventPublisher.publish({
       eventId: uuidv4(),
       type: DOMAIN_EVENTS.TICKET_CREATED,
@@ -99,5 +111,14 @@ export class GetDashboardMetricsUseCase {
 
   execute() {
     return this.ticketRepository.getMetrics();
+  }
+}
+
+@Injectable()
+export class ListWhatsappInboxUseCase {
+  constructor(@Inject(TOKENS.TICKET_REPOSITORY) private readonly ticketRepository: TicketRepositoryPort) {}
+
+  execute(filters: { from?: Date; to?: Date; status?: TicketStatus; search?: string }): Promise<InboxWhatsappRow[]> {
+    return this.ticketRepository.listWhatsappInbox(filters);
   }
 }

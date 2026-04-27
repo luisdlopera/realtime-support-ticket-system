@@ -1,4 +1,5 @@
 import { authStorage } from "./auth";
+import { TicketMessage, WhatsappInboxRow } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -23,15 +24,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+function authHeader(): Record<string, string> {
+  const token = authStorage.getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export const api = {
   login: (body: { email: string; password: string }) =>
-    request<{ accessToken: string; user: { id: string; name: string; email: string; role: string } }>(
-      "/auth/login",
-      {
-        method: "POST",
-        body: JSON.stringify(body),
-      },
-    ),
+    request<{
+      accessToken: string;
+      user: { id: string; name: string; email: string; role: string };
+    }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   register: (body: { name: string; email: string; password: string; role?: string }) =>
     request("/auth/register", {
       method: "POST",
@@ -54,11 +60,58 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ status }),
     }),
-  listMessages: (ticketId: string) => request(`/tickets/${ticketId}/messages`),
-  createMessage: (ticketId: string, content: string) =>
-    request(`/tickets/${ticketId}/messages`, {
+  listMessages: (ticketId: string) => request<TicketMessage[]>(`/tickets/${ticketId}/messages`),
+
+  createMessage: (ticketId: string, text: string) =>
+    request<TicketMessage>(`/tickets/${ticketId}/messages`, {
       method: "POST",
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ text }),
     }),
+
+  postMessage: (ticketId: string, body: { text?: string; replyToMessageId?: string }) =>
+    request<TicketMessage>(`/tickets/${ticketId}/messages`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  createMessageWithMedia: (
+    ticketId: string,
+    form: { text?: string; replyToMessageId?: string; file?: File | null },
+  ) => {
+    const fd = new FormData();
+    if (form.text) fd.append("text", form.text);
+    if (form.replyToMessageId) fd.append("replyToMessageId", form.replyToMessageId);
+    if (form.file) fd.append("file", form.file);
+    return fetch(`${API_URL}/tickets/${ticketId}/messages`, {
+      method: "POST",
+      headers: authHeader(),
+      body: fd,
+    }).then(async (response) => {
+      if (!response.ok) {
+        const payload = await response.text();
+        throw new Error(payload || "Request failed");
+      }
+      return response.json() as Promise<TicketMessage>;
+    });
+  },
+
+  markMessagesRead: (ticketId: string) =>
+    request(`/tickets/${ticketId}/messages/mark-read`, { method: "POST" }),
+
+  getMessageMediaInfo: (ticketId: string, messageId: string) =>
+    request<{ url: string; mimeType: string | null; fileName: string | null }>(
+      `/tickets/${ticketId}/messages/${messageId}/media`,
+    ),
+
+  listWhatsappInbox: (query?: { from?: string; to?: string; search?: string; status?: string }) => {
+    const p = new URLSearchParams();
+    if (query?.from) p.set("from", query.from);
+    if (query?.to) p.set("to", query.to);
+    if (query?.search) p.set("search", query.search);
+    if (query?.status) p.set("status", query.status);
+    const q = p.toString();
+    return request<WhatsappInboxRow[]>(`/tickets/inbox/whatsapp${q ? `?${q}` : ""}`);
+  },
+
   dashboardMetrics: () => request("/tickets/metrics/dashboard"),
 };
