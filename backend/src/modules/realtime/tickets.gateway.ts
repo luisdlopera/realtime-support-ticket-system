@@ -22,7 +22,7 @@ import { Inject } from "@nestjs/common";
 @Injectable()
 export class TicketsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
-  private server!: Server;
+  private server: Server | undefined;
 
   constructor(@Inject(TOKENS.TOKEN_SERVICE) private readonly tokenService: TokenServicePort) {}
 
@@ -59,6 +59,10 @@ export class TicketsGateway implements OnGatewayConnection, OnGatewayDisconnect 
 
   @SubscribeMessage("ticket.typing")
   handleTyping(@ConnectedSocket() client: Socket, @MessageBody() body: { ticketId: string; isTyping: boolean }) {
+    if (!this.server) {
+      console.warn("[TicketsGateway] Server not initialized, cannot broadcast typing");
+      return;
+    }
     this.server.to(`ticket:${body.ticketId}`).emit("ticket.typing", {
       ticketId: body.ticketId,
       userId: client.data.user.sub,
@@ -67,10 +71,18 @@ export class TicketsGateway implements OnGatewayConnection, OnGatewayDisconnect 
   }
 
   emitToTicketRoom(ticketId: string, eventName: string, payload: unknown) {
+    if (!this.server) {
+      console.warn("[TicketsGateway] Server not initialized, cannot emit to ticket room");
+      return;
+    }
     this.server.to(`ticket:${ticketId}`).emit(eventName, payload);
   }
 
   emitToAgents(eventName: string, payload: unknown) {
+    if (!this.server) {
+      console.warn("[TicketsGateway] Server not initialized, cannot emit to agents");
+      return;
+    }
     this.server.to("agents:dashboard").emit(eventName, payload);
   }
 }

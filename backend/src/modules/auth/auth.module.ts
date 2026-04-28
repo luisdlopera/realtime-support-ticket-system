@@ -1,4 +1,4 @@
-import { Global, Module } from "@nestjs/common";
+import { Global, Module, Provider } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TOKENS } from "../../core/application/ports/ports";
@@ -17,7 +17,14 @@ import {
 } from "../../core/application/use-cases/auth.use-cases";
 import { AuthController } from "./auth.controller";
 import { PrismaService } from "../../core/infrastructure/persistence/prisma/prisma.service";
-import { ConsoleEmailService } from "../../core/infrastructure/email/email.service";
+import { createEmailService } from "../../core/infrastructure/email/email.service";
+
+// Factory provider for email service
+const EmailServiceProvider: Provider = {
+  provide: TOKENS.EMAIL_SERVICE,
+  useFactory: (config: ConfigService) => createEmailService(config),
+  inject: [ConfigService],
+};
 
 @Global()
 @Module({
@@ -43,11 +50,10 @@ import { ConsoleEmailService } from "../../core/infrastructure/email/email.servi
     JwtTokenService,
     PrismaRefreshTokenRepository,
     PrismaService,
-    ConsoleEmailService,
+    EmailServiceProvider,
     { provide: TOKENS.PASSWORD_HASHER, useExisting: BcryptPasswordHasher },
     { provide: TOKENS.TOKEN_SERVICE, useExisting: JwtTokenService },
     { provide: TOKENS.REFRESH_TOKEN_REPOSITORY, useExisting: PrismaRefreshTokenRepository },
-    { provide: TOKENS.EMAIL_SERVICE, useExisting: ConsoleEmailService },
   ],
   exports: [TOKENS.PASSWORD_HASHER, TOKENS.TOKEN_SERVICE, JwtModule],
 })

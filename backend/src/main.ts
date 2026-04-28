@@ -4,6 +4,7 @@ import { AppModule } from "./app.module";
 import { ConfigService } from "@nestjs/config";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
+import { ERROR_MESSAGES } from "./common/constants/error-messages.constants";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
@@ -71,7 +72,22 @@ async function bootstrap() {
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   });
 
-  await app.listen(config.get<number>("PORT") ?? 3001);
+  const port = config.get<number>("PORT") ?? 3001;
+  const server = await app.listen(port);
+
+  // Graceful shutdown
+  const gracefulShutdown = (signal: string) => {
+    console.log(`[Bootstrap] Received ${signal}. Starting graceful shutdown...`);
+    server.close(() => {
+      console.log("[Bootstrap] HTTP server closed");
+      process.exit(0);
+    });
+  };
+
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+  console.log(`[Bootstrap] Server running on port ${port}`);
 }
 
 void bootstrap();
