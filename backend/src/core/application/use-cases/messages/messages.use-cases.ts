@@ -1,8 +1,16 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { v4 as uuidv4 } from "uuid";
+import DOMPurify from "isomorphic-dompurify";
 import { TOKENS, DomainEventPublisherPort, MessageRepositoryPort, TicketRepositoryPort } from "../../ports/ports";
 import { DOMAIN_EVENTS } from "../../../domain/events/domain-events.constants";
 import type { MessageType } from "../../../domain/entities/domain.types";
+
+// Configurar DOMPurify para permitir solo texto plano
+const purifyConfig = {
+  ALLOWED_TAGS: [], // No permitir ningún tag HTML
+  ALLOWED_ATTR: [], // No permitir atributos
+  KEEP_CONTENT: true, // Mantener el contenido de los tags
+};
 
 export type CreateMessageInput = {
   ticketId: string;
@@ -32,11 +40,14 @@ export class CreateMessageUseCase {
       throw new NotFoundException("Ticket not found");
     }
 
+    // Sanitizar texto para prevenir XSS
+    const sanitizedText = input.text ? DOMPurify.sanitize(input.text, purifyConfig) : null;
+
     const message = await this.messageRepository.create({
       ticketId: input.ticketId,
       authorId: input.authorId,
       messageType: input.messageType,
-      text: input.text ?? null,
+      text: sanitizedText,
       r2ObjectKey: input.r2ObjectKey,
       mediaMimeType: input.mediaMimeType,
       fileName: input.fileName,
