@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { TOKENS, DomainEventPublisherPort, TicketRepositoryPort } from "../../ports/ports";
 import { InboxWhatsappRow, TicketChannel, TicketStatus } from "../../../domain/entities/domain.types";
 import { DOMAIN_EVENTS } from "../../../domain/events/domain-events.constants";
+import { ERROR_MESSAGES } from "../../../../common/constants/error-messages.constants";
 
 @Injectable()
 export class CreateTicketUseCase {
@@ -53,7 +54,7 @@ export class GetTicketUseCase {
   async execute(ticketId: string) {
     const ticket = await this.ticketRepository.findById(ticketId);
     if (!ticket) {
-      throw new NotFoundException("Ticket not found");
+      throw new NotFoundException(ERROR_MESSAGES.RESOURCE.TICKET_NOT_FOUND);
     }
     return ticket;
   }
@@ -90,7 +91,7 @@ export class ChangeTicketStatusUseCase {
   async execute(input: { ticketId: string; status: TicketStatus; actorUserId: string }) {
     const previous = await this.ticketRepository.findById(input.ticketId);
     if (!previous) {
-      throw new NotFoundException("Ticket not found");
+      throw new NotFoundException(ERROR_MESSAGES.RESOURCE.TICKET_NOT_FOUND);
     }
     const ticket = await this.ticketRepository.changeStatus(input.ticketId, input.status);
     await this.eventPublisher.publish({

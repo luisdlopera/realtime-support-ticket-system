@@ -13,6 +13,7 @@ import { CreateTicketUseCase } from "../../core/application/use-cases/tickets/ti
 import { R2StorageService } from "../../core/infrastructure/storage/r2.service";
 import { toE164, toInternalEmailFromPhone, phoneDigits } from "./phone.util";
 import type { MessageType, TicketEntity } from "../../core/domain/entities/domain.types";
+import { ERROR_MESSAGES } from "../../common/constants/error-messages.constants";
 
 // Límite máximo de tamaño de media: 50MB
 const MAX_MEDIA_SIZE = 50 * 1024 * 1024;
@@ -147,10 +148,10 @@ export class WhatsappInboundService {
     ticket: TicketEntity,
   ) {
     if (!mediaId) {
-      return { messageType: mtype, text: caption ?? "Media (missing id)", r2ObjectKey: null, mediaMime: null, fileName: null };
+      return { messageType: mtype, text: caption ?? ERROR_MESSAGES.WHATSAPP.MISSING_MEDIA_ID, r2ObjectKey: null, mediaMime: null, fileName: null };
     }
     if (!this.r2.isEnabled() || !token) {
-      return { messageType: mtype, text: caption ?? "Media (set R2 + WHATSAPP_ACCESS_TOKEN to store file)", r2ObjectKey: null, mediaMime: null, fileName: null };
+      return { messageType: mtype, text: caption ?? ERROR_MESSAGES.WHATSAPP.MEDIA_SETUP_REQUIRED, r2ObjectKey: null, mediaMime: null, fileName: null };
     }
     const buf = await this.fetchMediaById(mediaId, token);
     const key = this.r2.buildKey(ticket.id, fileName);
@@ -204,19 +205,17 @@ export class WhatsappInboundService {
     });
     if (!infoRes.ok) {
       const t = await infoRes.text();
-      throw new Error(`Media info failed: ${t}`);
+      throw new Error(ERROR_MESSAGES.WHATSAPP.MEDIA_INFO_FAILED(t));
     }
     const info = (await infoRes.json()) as { url?: string; file_size?: number };
 
     if (!info.url) {
-      throw new Error("No media url");
+      throw new Error(ERROR_MESSAGES.WHATSAPP.NO_MEDIA_URL);
     }
 
     // Verificar tamaño si está disponible en metadata
     if (info.file_size && info.file_size > MAX_MEDIA_SIZE) {
-      throw new BadRequestException(
-        `Media file too large: ${info.file_size} bytes. Maximum allowed: ${MAX_MEDIA_SIZE} bytes (50MB)`
-      );
+      throw new BadRequestException(ERROR_MESSAGES.WHATSAPP.MEDIA_TOO_LARGE(info.file_size, MAX_MEDIA_SIZE));
     }
 
     // HEAD request para verificar Content-Length antes de descargar
@@ -226,23 +225,21 @@ export class WhatsappInboundService {
     });
 
     if (!headRes.ok) {
-      throw new Error("Media HEAD request failed");
+      throw new Error(ERROR_MESSAGES.WHATSAPP.MEDIA_HEAD_FAILED);
     }
 
     const contentLength = headRes.headers.get("content-length");
     if (contentLength) {
       const size = parseInt(contentLength, 10);
       if (size > MAX_MEDIA_SIZE) {
-        throw new BadRequestException(
-          `Media file too large: ${size} bytes. Maximum allowed: ${MAX_MEDIA_SIZE} bytes (50MB)`
-        );
+        throw new BadRequestException(ERROR_MESSAGES.WHATSAPP.MEDIA_TOO_LARGE(size, MAX_MEDIA_SIZE));
       }
     }
 
     // Descargar el archivo
     const dataRes = await fetch(info.url, { headers: { Authorization: `Bearer ${token}` } });
     if (!dataRes.ok) {
-      throw new Error("Media download failed");
+      throw new Error(ERROR_MESSAGES.WHATSAPP.MEDIA_DOWNLOAD_FAILED);
     }
 
     const arrayBuffer = await dataRes.arrayBuffer();
@@ -250,9 +247,7 @@ export class WhatsappInboundService {
 
     // Verificar tamaño final del buffer descargado
     if (buffer.length > MAX_MEDIA_SIZE) {
-      throw new BadRequestException(
-        `Downloaded media too large: ${buffer.length} bytes. Maximum allowed: ${MAX_MEDIA_SIZE} bytes (50MB)`
-      );
+      throw new BadRequestException(ERROR_MESSAGES.WHATSAPP.MEDIA_TOO_LARGE(buffer.length, MAX_MEDIA_SIZE));
     }
 
     return buffer;

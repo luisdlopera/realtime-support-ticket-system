@@ -4,6 +4,7 @@ import DOMPurify from "isomorphic-dompurify";
 import { TOKENS, DomainEventPublisherPort, MessageRepositoryPort, TicketRepositoryPort } from "../../ports/ports";
 import { DOMAIN_EVENTS } from "../../../domain/events/domain-events.constants";
 import type { MessageType } from "../../../domain/entities/domain.types";
+import { ERROR_MESSAGES } from "../../../../common/constants/error-messages.constants";
 
 // Configurar DOMPurify para permitir solo texto plano
 const purifyConfig = {
@@ -37,7 +38,7 @@ export class CreateMessageUseCase {
   async execute(input: CreateMessageInput) {
     const ticket = await this.ticketRepository.findById(input.ticketId);
     if (!ticket) {
-      throw new NotFoundException("Ticket not found");
+      throw new NotFoundException(ERROR_MESSAGES.RESOURCE.TICKET_NOT_FOUND);
     }
 
     // Sanitizar texto para prevenir XSS

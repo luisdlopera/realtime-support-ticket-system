@@ -12,6 +12,7 @@ import {
 import { LoginDto, RegisterDto, ForgotPasswordDto, ResetPasswordDto } from "./dto/auth.dto";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { CurrentUser, AuthUser } from "../../common/decorators/current-user.decorator";
+import { ERROR_MESSAGES } from "../../common/constants/error-messages.constants";
 
 @Controller("auth")
 export class AuthController {
@@ -70,7 +71,7 @@ export class AuthController {
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const oldRefreshToken = req.cookies?.refreshToken;
     if (!oldRefreshToken) {
-      throw new UnauthorizedException("No refresh token");
+      throw new UnauthorizedException(ERROR_MESSAGES.AUTH.NO_REFRESH_TOKEN);
     }
 
     const result = await this.refreshTokenUseCase.execute(oldRefreshToken);

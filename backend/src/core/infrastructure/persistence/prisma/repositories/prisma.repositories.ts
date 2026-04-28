@@ -308,7 +308,7 @@ export class PrismaNotificationRepository implements NotificationRepositoryPort 
         userId: data.userId,
         ticketId: data.ticketId,
         type: data.type as NotificationType,
-        payload: data.payload as never,
+        payload: data.payload ? (data.payload as Prisma.InputJsonValue) : Prisma.JsonNull,
       },
     });
   }

@@ -4,6 +4,7 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { randomUUID } from "crypto";
 import { R2StoragePort, TOKENS } from "../../application/ports/ports";
+import { ERROR_MESSAGES } from "../../../common/constants/error-messages.constants";
 
 @Injectable()
 export class R2StorageService implements R2StoragePort {
@@ -51,7 +52,7 @@ export class R2StorageService implements R2StoragePort {
 
   async putObject(key: string, body: Buffer, contentType: string) {
     if (!this.client) {
-      throw new Error("R2 is not configured (set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET)");
+      throw new Error(ERROR_MESSAGES.STORAGE.R2_NOT_CONFIGURED);
     }
     await this.client.send(
       new PutObjectCommand({
@@ -70,7 +71,7 @@ export class R2StorageService implements R2StoragePort {
 
   async getPresignedGetUrl(key: string, expiresSeconds: number) {
     if (!this.client) {
-      throw new Error("R2 is not configured");
+      throw new Error(ERROR_MESSAGES.STORAGE.R2_NOT_CONFIGURED);
     }
     const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
     return getSignedUrl(this.client, command, { expiresIn: expiresSeconds || this.signedTtl });

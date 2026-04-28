@@ -4,6 +4,7 @@ import { Throttle } from "@nestjs/throttler";
 import { Request } from "express";
 import { WhatsappInboundService } from "./whatsapp-inbound.service";
 import { verifyMetaSignature } from "./verify-signature.util";
+import { ERROR_MESSAGES } from "../../common/constants/error-messages.constants";
 
 @Controller("whatsapp")
 export class WhatsappWebhookController {
@@ -23,7 +24,7 @@ export class WhatsappWebhookController {
     if (mode === "subscribe" && token && token === expected) {
       return challenge;
     }
-    throw new ForbiddenException();
+    throw new ForbiddenException(ERROR_MESSAGES.GENERIC.FORBIDDEN);
   }
 
   @Post("webhook")
@@ -33,12 +34,19 @@ export class WhatsappWebhookController {
     const appSecret = this.config.get<string>("whatsapp.appSecret") ?? "";
     const sig = (req.headers["x-hub-signature-256"] as string | undefined) || "";
     const buf = rawBody && rawBody.length ? rawBody : req.rawBody;
-    if (appSecret) {
+
+    // Validación estricta: appSecret debe existir y tener contenido
+    const isProduction = process.env.NODE_ENV === "production";
+    const hasValidSecret = appSecret && appSecret.length > 0;
+
+    if (isProduction && !hasValidSecret) {
+      throw new UnauthorizedException(ERROR_MESSAGES.VALIDATION.MISSING_APP_SECRET);
+    }
+
+    if (hasValidSecret) {
       if (!buf || !verifyMetaSignature(appSecret, buf, sig)) {
-        throw new UnauthorizedException("Invalid signature");
+        throw new UnauthorizedException(ERROR_MESSAGES.VALIDATION.INVALID_SIGNATURE);
       }
-    } else if (process.env.NODE_ENV === "production") {
-      throw new UnauthorizedException("WHATSAPP_APP_SECRET is required in production");
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const body = req.body as any;

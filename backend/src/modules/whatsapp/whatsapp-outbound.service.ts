@@ -1,8 +1,9 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, InternalServerErrorException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { TOKENS, WhatsappContactRepositoryPort } from "../../core/application/ports/ports";
 import { R2StorageService } from "../../core/infrastructure/storage/r2.service";
 import type { MessageType, TicketMessageEntity, TicketEntity } from "../../core/domain/entities/domain.types";
+import { ERROR_MESSAGES } from "../../common/constants/error-messages.constants";
 
 @Injectable()
 export class WhatsappOutboundService {
@@ -14,13 +15,13 @@ export class WhatsappOutboundService {
     private readonly r2: R2StorageService,
   ) {}
 
-  private phoneId() {
-    return this.config.get<{ phoneNumberId: string }>("whatsapp")?.phoneNumberId;
+  private phoneId(): string | null {
+    return this.config.get<{ phoneNumberId: string }>("whatsapp")?.phoneNumberId ?? null;
   }
-  private token() {
-    return this.config.get<{ accessToken: string }>("whatsapp")?.accessToken;
+  private token(): string | null {
+    return this.config.get<{ accessToken: string }>("whatsapp")?.accessToken ?? null;
   }
-  private graphV() {
+  private graphV(): string {
     return this.config.get<{ graphVersion: string }>("whatsapp")?.graphVersion ?? "v21.0";
   }
 
@@ -28,17 +29,22 @@ export class WhatsappOutboundService {
     if (ticket.channel !== "WHATSAPP" || !ticket.whatsappContactId) {
       return;
     }
-    if (!this.phoneId() || !this.token()) {
-      this.logger.warn("WhatsApp not configured: missing PHONE_NUMBER_ID or ACCESS_TOKEN");
+
+    const phoneId = this.phoneId();
+    const token = this.token();
+
+    if (!phoneId || !token) {
+      this.logger.warn(ERROR_MESSAGES.WHATSAPP.NOT_CONFIGURED);
       return;
     }
+
     const contact = await this.contacts.findById(ticket.whatsappContactId);
     if (!contact) {
       return;
     }
     const to = contact.phoneE164.replace(/^\+/, "");
     const v = this.graphV();
-    const url = `https://graph.facebook.com/${v}/${this.phoneId()}/messages`;
+    const url = `https://graph.facebook.com/${v}/${phoneId}/messages`;
     const body = this.buildPayload(to, message);
     if (!body) {
       return;
@@ -47,13 +53,13 @@ export class WhatsappOutboundService {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${this.token()!}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(body),
     });
     if (!res.ok) {
       const t = await res.text();
-      this.logger.warn(`WhatsApp send failed: ${t}`);
+      this.logger.warn(ERROR_MESSAGES.WHATSAPP.SEND_FAILED(t));
     }
   }
 
@@ -100,7 +106,7 @@ export class WhatsappOutboundService {
           };
         }
       } else {
-        this.logger.warn("Set R2_PUBLIC_BASE_URL to send media to WhatsApp");
+        this.logger.warn(ERROR_MESSAGES.WHATSAPP.SET_R2_PUBLIC_URL);
       }
     }
     if (message.text) {

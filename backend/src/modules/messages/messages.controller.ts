@@ -25,6 +25,7 @@ import { R2StorageService } from "../../core/infrastructure/storage/r2.service";
 import type { MessageType } from "../../core/domain/entities/domain.types";
 import { Inject } from "@nestjs/common";
 import { TOKENS, MessageRepositoryPort } from "../../core/application/ports/ports";
+import { ERROR_MESSAGES } from "../../common/constants/error-messages.constants";
 
 function mimeToMessageType(m: string | undefined): MessageType {
   if (!m) return "DOCUMENT";
@@ -66,7 +67,7 @@ export class MessagesController {
     const list = await this.messageRepository.listByTicket(ticketId);
     const msg = list.find((m) => m.id === messageId);
     if (!msg || !msg.r2ObjectKey) {
-      throw new NotFoundException("message or media not found");
+      throw new NotFoundException(ERROR_MESSAGES.RESOURCE.MESSAGE_NOT_FOUND);
     }
     const url = await this.r2.getPresignedGetUrl(msg.r2ObjectKey, 3600);
     return { url, mimeType: msg.mediaMimeType, fileName: msg.fileName };
@@ -97,7 +98,7 @@ export class MessagesController {
       messageType = mimeToMessageType(file.mimetype);
       const key = this.r2.buildKey(ticketId, file.originalname);
       if (!this.r2.isEnabled()) {
-        throw new NotFoundException("R2 is not configured for media uploads");
+        throw new NotFoundException(ERROR_MESSAGES.STORAGE.R2_NOT_CONFIGURED);
       }
       await this.r2.putObject(key, file.buffer, file.mimetype);
       r2ObjectKey = key;
