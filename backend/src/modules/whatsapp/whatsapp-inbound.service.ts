@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, BadRequestException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   TOKENS,
@@ -13,6 +13,9 @@ import { CreateTicketUseCase } from "../../core/application/use-cases/tickets/ti
 import { R2StorageService } from "../../core/infrastructure/storage/r2.service";
 import { toE164, toInternalEmailFromPhone, phoneDigits } from "./phone.util";
 import type { MessageType, TicketEntity } from "../../core/domain/entities/domain.types";
+
+// Límite máximo de tamaño de media: 50MB
+const MAX_MEDIA_SIZE = 50 * 1024 * 1024;
 
 @Injectable()
 export class WhatsappInboundService {
@@ -192,8 +195,10 @@ export class WhatsappInboundService {
     });
   }
 
-  private async fetchMediaById(mediaId: string, token: string) {
+  private async fetchMediaById(mediaId: string, token: string): Promise<Buffer> {
     const v = this.graphV();
+
+    // Obtener metadata del archivo
     const infoRes = await fetch(`https://graph.facebook.com/${v}/${mediaId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -201,15 +206,56 @@ export class WhatsappInboundService {
       const t = await infoRes.text();
       throw new Error(`Media info failed: ${t}`);
     }
-    const info = (await infoRes.json()) as { url?: string };
+    const info = (await infoRes.json()) as { url?: string; file_size?: number };
+
     if (!info.url) {
       throw new Error("No media url");
     }
+
+    // Verificar tamaño si está disponible en metadata
+    if (info.file_size && info.file_size > MAX_MEDIA_SIZE) {
+      throw new BadRequestException(
+        `Media file too large: ${info.file_size} bytes. Maximum allowed: ${MAX_MEDIA_SIZE} bytes (50MB)`
+      );
+    }
+
+    // HEAD request para verificar Content-Length antes de descargar
+    const headRes = await fetch(info.url, {
+      method: "HEAD",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!headRes.ok) {
+      throw new Error("Media HEAD request failed");
+    }
+
+    const contentLength = headRes.headers.get("content-length");
+    if (contentLength) {
+      const size = parseInt(contentLength, 10);
+      if (size > MAX_MEDIA_SIZE) {
+        throw new BadRequestException(
+          `Media file too large: ${size} bytes. Maximum allowed: ${MAX_MEDIA_SIZE} bytes (50MB)`
+        );
+      }
+    }
+
+    // Descargar el archivo
     const dataRes = await fetch(info.url, { headers: { Authorization: `Bearer ${token}` } });
     if (!dataRes.ok) {
       throw new Error("Media download failed");
     }
-    return Buffer.from(await dataRes.arrayBuffer());
+
+    const arrayBuffer = await dataRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Verificar tamaño final del buffer descargado
+    if (buffer.length > MAX_MEDIA_SIZE) {
+      throw new BadRequestException(
+        `Downloaded media too large: ${buffer.length} bytes. Maximum allowed: ${MAX_MEDIA_SIZE} bytes (50MB)`
+      );
+    }
+
+    return buffer;
   }
 }
 
