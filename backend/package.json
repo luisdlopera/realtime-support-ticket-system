@@ -6,11 +6,23 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/src/main.js",
     "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "start:debug": "ts-node-dev --inspect --respawn --transpile-only src/main.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:push": "prisma db push",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "prisma:validate": "prisma validate",
+    "prisma:format": "prisma format",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"prisma/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"prisma/**/*.ts\"",
+    "type-check": "tsc --noEmit",
+    "test": "echo \"No tests implemented yet. Add Jest/Vitest tests.\"",
+    "test:e2e": "echo \"No E2E tests implemented yet.\"",
+    "ci": "npm run type-check && npm run lint && npm run build",
+    "validate": "npm run prisma:validate && npm run type-check && npm run lint && npm run build"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1037.0",
@@ -40,13 +52,19 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.9.0",
     "@types/bcrypt": "^5.0.2",
     "@types/cookie-parser": "^1.4.10",
     "@types/node": "^20.16.5",
     "@types/passport-jwt": "^4.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.4.0",
+    "@typescript-eslint/parser": "^8.4.0",
+    "eslint": "^9.9.0",
+    "globals": "^15.9.0",
+    "prettier": "^3.3.3",
     "prisma": "^6.6.0",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.6.2"
-  }
+  },
 }
