@@ -44,6 +44,10 @@ export interface UserRepositoryPort {
   findByEmail(email: string): Promise<UserEntity | null>;
   findById(id: string): Promise<UserEntity | null>;
   findAgents(): Promise<Pick<UserEntity, "id" | "name" | "email" | "role">[]>;
+  updatePasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void>;
+  findByPasswordResetToken(token: string): Promise<UserEntity | null>;
+  updatePassword(userId: string, passwordHash: string): Promise<void>;
+  clearPasswordResetToken(userId: string): Promise<void>;
 }
 
 export interface WhatsappContactRepositoryPort {

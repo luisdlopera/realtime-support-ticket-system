@@ -13,6 +13,8 @@ export interface UserEntity {
   email: string;
   passwordHash: string;
   role: UserRole;
+  passwordResetToken: string | null;
+  passwordResetExpires: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

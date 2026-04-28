@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, UnauthorizedException, InternalServerErrorException } from "@nestjs/common";
 import * as crypto from "crypto";
 import {
   PasswordHasherPort,
@@ -10,6 +10,7 @@ import {
   EmailServicePort,
 } from "../ports/ports";
 import { UserRole } from "../../domain/entities/domain.types";
+import { ERROR_MESSAGES } from "../../../common/constants/error-messages.constants";
 
 @Injectable()
 export class RegisterUseCase {
@@ -66,11 +67,11 @@ export class LoginUseCase {
   }> {
     const user = await this.userRepository.findByEmail(input.email.toLowerCase());
     if (!user) {
-      throw new UnauthorizedException("Invalid credentials");
+      throw new UnauthorizedException(ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS);
     }
     const valid = await this.hasher.compare(input.password, user.passwordHash);
     if (!valid) {
-      throw new UnauthorizedException("Invalid credentials");
+      throw new UnauthorizedException(ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS);
     }
 
     // Generar token pair
@@ -111,21 +112,21 @@ export class RefreshTokenUseCase {
     const storedToken = await this.refreshTokenRepository.findByToken(refreshToken);
 
     if (!storedToken) {
-      throw new UnauthorizedException("Invalid refresh token");
+      throw new UnauthorizedException(ERROR_MESSAGES.AUTH.INVALID_TOKEN);
     }
 
     if (storedToken.revokedAt) {
-      throw new UnauthorizedException("Token has been revoked");
+      throw new UnauthorizedException(ERROR_MESSAGES.AUTH.TOKEN_REVOKED);
     }
 
     if (new Date() > storedToken.expiresAt) {
-      throw new UnauthorizedException("Token has expired");
+      throw new UnauthorizedException(ERROR_MESSAGES.AUTH.TOKEN_EXPIRED);
     }
 
     // Obtener datos del usuario
     const user = await this.userRepository.findById(storedToken.userId);
     if (!user) {
-      throw new UnauthorizedException("User not found");
+      throw new UnauthorizedException(ERROR_MESSAGES.AUTH.USER_NOT_FOUND);
     }
 
     // Revocar el token antiguo
@@ -176,14 +177,18 @@ export class ForgotPasswordUseCase {
       return;
     }
 
+    // Verificar que el repositorio tiene los métodos necesarios
+    if (typeof this.userRepository.updatePasswordResetToken !== "function") {
+      throw new InternalServerErrorException("Password reset functionality not available");
+    }
+
     // Generar token de reset
     const resetToken = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 1); // Expira en 1 hora
 
-    // Guardar token en el usuario (necesitamos agregar método al repositorio)
-    // Por ahora, asumimos que existe un método updatePasswordResetToken
-    await (this.userRepository as any).updatePasswordResetToken?.(user.id, resetToken, expiresAt);
+    // Guardar token en el usuario
+    await this.userRepository.updatePasswordResetToken(user.id, resetToken, expiresAt);
 
     // Enviar email
     await this.emailService.sendPasswordResetEmail(email, resetToken);
@@ -198,22 +203,33 @@ export class ResetPasswordUseCase {
   ) {}
 
   async execute(token: string, newPassword: string): Promise<void> {
-    // Buscar usuario por token válido
-    const user = await (this.userRepository as any).findByPasswordResetToken?.(token);
-
-    if (!user) {
-      throw new BadRequestException("Invalid or expired token");
+    // Verificar que el repositorio tiene los métodos necesarios
+    if (typeof this.userRepository.findByPasswordResetToken !== "function") {
+      throw new InternalServerErrorException("Password reset functionality not available");
+    }
+    if (typeof this.userRepository.updatePassword !== "function") {
+      throw new InternalServerErrorException("Password update functionality not available");
+    }
+    if (typeof this.userRepository.clearPasswordResetToken !== "function") {
+      throw new InternalServerErrorException("Password reset functionality not available");
     }
 
-    if (new Date() > user.passwordResetExpires) {
-      throw new BadRequestException("Token has expired");
+    // Buscar usuario por token válido
+    const user = await this.userRepository.findByPasswordResetToken(token);
+
+    if (!user) {
+      throw new BadRequestException(ERROR_MESSAGES.VALIDATION.INVALID_OR_EXPIRED_TOKEN);
+    }
+
+    if (!user.passwordResetExpires || new Date() > user.passwordResetExpires) {
+      throw new BadRequestException(ERROR_MESSAGES.VALIDATION.PASSWORD_TOKEN_EXPIRED);
     }
 
     // Hashear nueva contraseña
     const passwordHash = await this.hasher.hash(newPassword);
 
     // Actualizar contraseña y limpiar token
-    await (this.userRepository as any).updatePassword?.(user.id, passwordHash);
-    await (this.userRepository as any).clearPasswordResetToken?.(user.id);
+    await this.userRepository.updatePassword(user.id, passwordHash);
+    await this.userRepository.clearPasswordResetToken(user.id);
   }
 }

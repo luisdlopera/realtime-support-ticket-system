@@ -7,6 +7,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { Request, Response } from "express";
+import { ERROR_MESSAGES } from "../constants/error-messages.constants";
 
 interface ErrorResponse {
   statusCode: number;
@@ -53,10 +54,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else {
       // Errores no HTTP
       if (exception instanceof Error) {
-        message = isProduction ? "Internal server error" : exception.message;
+        message = isProduction ? ERROR_MESSAGES.GENERIC.INTERNAL_ERROR : exception.message;
         errorCode = this.generateErrorCode(exception);
       } else {
-        message = "Internal server error";
+        message = ERROR_MESSAGES.GENERIC.INTERNAL_ERROR;
       }
     }
 

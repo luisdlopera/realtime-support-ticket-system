@@ -11,7 +11,7 @@ export class RegisterDto {
   @IsEmail()
   email!: string;
 
-  @IsStrongPassword()
+  @IsStrongPassword({ message: "Password must be at least 8 characters with uppercase, lowercase, number, and special character" })
   password!: string;
 
   @IsIn(USER_ROLES)
@@ -24,7 +24,7 @@ export class LoginDto {
   email!: string;
 
   @IsString()
-  @MinLength(1)
+  @MinLength(8, { message: "Password must be at least 8 characters long" })
   password!: string;
 }
 
@@ -38,6 +38,6 @@ export class ResetPasswordDto {
   @MinLength(1)
   token!: string;
 
-  @IsStrongPassword()
+  @IsStrongPassword({ message: "Password must be at least 8 characters with uppercase, lowercase, number, and special character" })
   newPassword!: string;
 }
