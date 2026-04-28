@@ -1,5 +1,8 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
+import { APP_GUARD, APP_FILTER } from "@nestjs/core";
+import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import configuration from "./config/configuration";
 import { PrismaModule } from "./core/infrastructure/persistence/prisma/prisma.module";
 import { StorageModule } from "./core/infrastructure/storage/storage.module";
@@ -15,6 +18,19 @@ import { HealthController } from "./health.controller";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
+    // Rate limiting: 100 requests por minuto por IP por defecto
+    ThrottlerModule.forRoot([
+      {
+        name: "default",
+        ttl: 60000, // 1 minuto
+        limit: 100, // 100 requests
+      },
+      {
+        name: "strict", // Para endpoints sensibles
+        ttl: 60000,
+        limit: 10,
+      },
+    ]),
     PrismaModule,
     StorageModule,
     AuthModule,
@@ -26,5 +42,17 @@ import { HealthController } from "./health.controller";
     UsersModule,
   ],
   controllers: [HealthController],
+  providers: [
+    // Aplicar rate limiting globalmente
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    // Filtro de excepciones global
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
+  ],
 })
 export class AppModule {}
