@@ -20,6 +20,8 @@ export const TOKENS = {
   SOCKET_BROADCAST_PORT: "SOCKET_BROADCAST_PORT",
   PASSWORD_HASHER: "PASSWORD_HASHER",
   TOKEN_SERVICE: "TOKEN_SERVICE",
+  REFRESH_TOKEN_REPOSITORY: "REFRESH_TOKEN_REPOSITORY",
+  EMAIL_SERVICE: "EMAIL_SERVICE",
   R2_STORAGE: "R2_STORAGE",
 } as const;
 
@@ -106,9 +108,28 @@ export interface PasswordHasherPort {
   compare(plainText: string, hash: string): Promise<boolean>;
 }
 
+export interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpires: Date;
+  refreshTokenExpires: Date;
+}
+
 export interface TokenServicePort {
   sign(payload: { sub: string; role: string; email: string }): string;
   verify(token: string): { sub: string; role: string; email: string };
+  generateTokenPair(payload: { sub: string; role: string; email: string }): TokenPair;
+}
+
+export interface RefreshTokenRepositoryPort {
+  create(data: { token: string; userId: string; expiresAt: Date; userAgent?: string; ipAddress?: string }): Promise<void>;
+  findByToken(token: string): Promise<{ id: string; userId: string; expiresAt: Date; revokedAt: Date | null } | null>;
+  revoke(token: string): Promise<void>;
+  revokeAllForUser(userId: string): Promise<void>;
+}
+
+export interface EmailServicePort {
+  sendPasswordResetEmail(email: string, resetToken: string): Promise<void>;
 }
 
 export interface R2StoragePort {
