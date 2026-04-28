@@ -3,24 +3,105 @@ import { TicketMessage, WhatsappInboxRow } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+function subscribeToRefresh(callback: (token: string) => void) {
+  refreshSubscribers.push(callback);
+}
+
+function notifyRefreshSubscribers(token: string) {
+  refreshSubscribers.forEach((callback) => callback(token));
+  refreshSubscribers = [];
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  try {
+    const response = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    authStorage.setToken(data.accessToken);
+    return data.accessToken;
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const makeRequest = async (accessToken: string | null): Promise<Response> => {
+    return fetch(`${API_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(init?.headers ?? {}),
+      },
+      credentials: "include",
+      cache: "no-store",
+    });
+  };
+
   const token = authStorage.getToken();
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init?.headers ?? {}),
-    },
-    cache: "no-store",
-  });
+  let response = await makeRequest(token);
+
+  // Si el token expiró (401), intentar refresh
+  if (response.status === 401 && !path.includes("/auth/refresh")) {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      const newToken = await refreshAccessToken();
+      isRefreshing = false;
+
+      if (newToken) {
+        notifyRefreshSubscribers(newToken);
+        response = await makeRequest(newToken);
+      } else {
+        // Refresh falló, redirigir a login
+        authStorage.clear();
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+        throw new Error("Session expired. Please log in again.");
+      }
+    } else {
+      // Esperar a que termine el refresh en curso
+      return new Promise((resolve, reject) => {
+        subscribeToRefresh((newToken) => {
+          makeRequest(newToken)
+            .then(async (newResponse) => {
+              if (!newResponse.ok) {
+                const payload = await newResponse.text();
+                reject(new Error(payload || "Request failed"));
+                return;
+              }
+              if (newResponse.status === 204) {
+                resolve({} as T);
+                return;
+              }
+              resolve(newResponse.json() as Promise<T>);
+            })
+            .catch(reject);
+        });
+      });
+    }
+  }
+
   if (!response.ok) {
     const payload = await response.text();
     throw new Error(payload || "Request failed");
   }
+
   if (response.status === 204) {
     return {} as T;
   }
+
   return response.json() as Promise<T>;
 }
 
@@ -30,14 +111,38 @@ function authHeader(): Record<string, string> {
 }
 
 export const api = {
-  login: (body: { email: string; password: string }) =>
-    request<{
+  login: async (body: { email: string; password: string }) => {
+    const result = await request<{
       accessToken: string;
       user: { id: string; name: string; email: string; role: string };
     }>("/auth/login", {
       method: "POST",
       body: JSON.stringify(body),
+    });
+    // Guardar el access token en memoria
+    authStorage.setToken(result.accessToken);
+    return result;
+  },
+
+  logout: async () => {
+    await request("/auth/logout", {
+      method: "POST",
+    });
+    authStorage.clear();
+  },
+
+  forgotPassword: (body: { email: string }) =>
+    request("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify(body),
     }),
+
+  resetPassword: (body: { token: string; newPassword: string }) =>
+    request("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
   register: (body: { name: string; email: string; password: string; role?: string }) =>
     request("/auth/register", {
       method: "POST",

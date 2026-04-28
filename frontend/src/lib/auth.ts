@@ -1,16 +1,19 @@
-const TOKEN_KEY = "support_token";
+// Storage en memoria para el access token (NO usar localStorage por seguridad XSS)
+let memoryToken: string | null = null;
 
 export const authStorage = {
   getToken(): string | null {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem(TOKEN_KEY);
+    return memoryToken;
   },
   setToken(token: string) {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(TOKEN_KEY, token);
+    memoryToken = token;
   },
   clear() {
-    if (typeof window === "undefined") return;
-    localStorage.removeItem(TOKEN_KEY);
+    memoryToken = null;
   },
 };
+
+// Helper para verificar si estamos en el cliente
+export function isClient(): boolean {
+  return typeof window !== "undefined";
+}
