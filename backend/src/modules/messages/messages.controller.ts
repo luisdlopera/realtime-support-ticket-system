@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   UploadedFile,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { FileInterceptor } from "@nestjs/platform-express";
 import {
   CreateMessageUseCase,
@@ -77,6 +78,7 @@ export class MessagesController {
       limits: { fileSize: 50 * 1024 * 1024 },
     }),
   )
+  @Throttle({ default: { limit: 30, ttl: 60000 } }) // 30 mensajes por minuto
   async create(
     @Param("ticketId") ticketId: string,
     @Body() body: CreateMessageJsonDto,

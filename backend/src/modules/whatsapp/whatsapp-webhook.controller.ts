@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Query, Req, HttpCode, UnauthorizedException, ForbiddenException, RawBody } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { Throttle } from "@nestjs/throttler";
 import { Request } from "express";
 import { WhatsappInboundService } from "./whatsapp-inbound.service";
 import { verifyMetaSignature } from "./verify-signature.util";
@@ -27,6 +28,7 @@ export class WhatsappWebhookController {
 
   @Post("webhook")
   @HttpCode(200)
+  @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 webhooks por minuto
   async receive(@Req() req: Request & { rawBody?: Buffer }, @RawBody() rawBody: Buffer) {
     const appSecret = this.config.get<string>("whatsapp.appSecret") ?? "";
     const sig = (req.headers["x-hub-signature-256"] as string | undefined) || "";

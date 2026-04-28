@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { CurrentUser, AuthUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
@@ -43,6 +44,7 @@ export class TicketsController {
   ) {}
 
   @Post()
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 tickets por minuto
   create(@Body() dto: CreateTicketDto, @CurrentUser() user: AuthUser) {
     return this.createTicketUseCase.execute({
       ...dto,
