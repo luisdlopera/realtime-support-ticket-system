@@ -1,19 +1,6 @@
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { authStorage } from "@/lib/auth";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 
+// El middleware de Next.js (middleware.ts) se encarga de la protección server-side
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-
-  useEffect(() => {
-    const token = authStorage.getToken();
-    if (!token) {
-      router.replace("/login");
-    }
-  }, [router]);
-
   return <DashboardShell>{children}</DashboardShell>;
 }

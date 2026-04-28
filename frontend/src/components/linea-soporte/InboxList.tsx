@@ -64,13 +64,16 @@ export function InboxList({
 
   return (
     <aside
-      className={`${mobileVisibleClass} flex-col border-r border-wa-border-light bg-white dark:border-wa-border-dark dark:bg-wa-panel-dark lg:w-full lg:max-w-[380px] xl:max-w-[420px]`}
+      className={`${mobileVisibleClass} flex-col border-r border-wa-border-light bg-wa-panel-light dark:border-wa-border-dark dark:bg-wa-panel-dark lg:w-full lg:max-w-[380px] xl:max-w-[420px]`}
     >
       {/* Header */}
-      <div className="flex h-[56px] items-center justify-between bg-wa-header-light px-3 dark:bg-wa-header-dark sm:px-4">
-        <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-100 sm:text-lg">
-          Chats
-        </h2>
+      <div className="flex min-h-[64px] items-center justify-between bg-wa-header-light px-3 dark:bg-wa-header-dark sm:px-4">
+        <div>
+          <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-100 sm:text-lg">
+            Chats
+          </h2>
+          <p className="text-xs text-wa-time dark:text-wa-time-dark">Conversaciones de WhatsApp</p>
+        </div>
         <Button
           isIconOnly
           variant="light"
@@ -86,17 +89,17 @@ export function InboxList({
       </div>
 
       {/* Search */}
-      <div className="px-2 py-2 sm:px-3">
+      <div className="space-y-2 px-2 py-2 sm:px-3">
         <Input
           placeholder="Buscar o empezar un chat"
           value={search}
           onValueChange={onSearchChange}
           startContent={<Search size={16} className="text-wa-time dark:text-wa-time-dark" />}
-          variant="flat"
           radius="lg"
           size="sm"
           classNames={{
-            inputWrapper: "bg-wa-search-light dark:bg-wa-search-dark h-9 sm:h-10",
+            inputWrapper:
+              "h-10 bg-white/90 shadow-sm dark:bg-wa-search-dark dark:shadow-none",
             input: "text-sm",
           }}
           aria-label="Buscar conversaciones"
@@ -106,45 +109,54 @@ export function InboxList({
       {/* Collapsible filters */}
       {filtersOpen && (
         <div className="border-b border-wa-border-light px-2 pb-3 dark:border-wa-border-dark animate-in fade-in slide-in-from-top-2 duration-200 sm:px-3">
-          <div className="mb-2 grid grid-cols-2 gap-2">
-            <Input
-              type="date"
-              label="Desde"
-              labelPlacement="outside"
-              value={filterFrom}
-              onValueChange={onFilterFromChange}
+          <div className="rounded-2xl border border-wa-border-light bg-white/80 p-3 shadow-sm dark:border-wa-border-dark dark:bg-wa-header-dark/80 dark:shadow-none">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+                  Filtros
+                </p>
+                <p className="text-xs text-wa-time dark:text-wa-time-dark">
+                  Acota las conversaciones por fecha
+                </p>
+              </div>
+              <Calendar size={16} className="text-wa-time dark:text-wa-time-dark" />
+            </div>
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              <Input
+                type="date"
+                label="Desde"
+                labelPlacement="outside"
+                value={filterFrom}
+                onValueChange={onFilterFromChange}
+                size="sm"
+                classNames={{
+                  inputWrapper: "h-9",
+                  label: "text-xs text-wa-time dark:text-wa-time-dark",
+                }}
+              />
+              <Input
+                type="date"
+                label="Hasta"
+                labelPlacement="outside"
+                value={filterTo}
+                onValueChange={onFilterToChange}
+                size="sm"
+                classNames={{
+                  inputWrapper: "h-9",
+                  label: "text-xs text-wa-time dark:text-wa-time-dark",
+                }}
+              />
+            </div>
+            <Button
+              fullWidth
               size="sm"
-              variant="bordered"
-              startContent={<Calendar size={14} className="text-wa-time" />}
-              classNames={{
-                inputWrapper: "h-9",
-                label: "text-xs",
-              }}
-            />
-            <Input
-              type="date"
-              label="Hasta"
-              labelPlacement="outside"
-              value={filterTo}
-              onValueChange={onFilterToChange}
-              size="sm"
-              variant="bordered"
-              startContent={<Calendar size={14} className="text-wa-time" />}
-              classNames={{
-                inputWrapper: "h-9",
-                label: "text-xs",
-              }}
-            />
+              color="primary"
+              className="h-9 bg-wa-teal font-semibold text-white shadow-sm"
+              onPress={onApplyFilters}
+            >
+              Aplicar filtros
+            </Button>
           </div>
-          <Button
-            fullWidth
-            size="sm"
-            color="primary"
-            className="bg-wa-teal font-medium h-9"
-            onPress={onApplyFilters}
-          >
-            Aplicar filtros
-          </Button>
         </div>
       )}
 

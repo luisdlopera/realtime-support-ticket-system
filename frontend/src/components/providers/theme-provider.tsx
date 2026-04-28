@@ -7,7 +7,13 @@ import { ReactNode } from "react";
 export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <HeroUIClientProvider>
-      <NextThemeProvider attribute="class" defaultTheme="dark" enableSystem={true}>
+      <NextThemeProvider
+        attribute="class"
+        defaultTheme="dark"
+        enableSystem={true}
+        enableColorScheme={true}
+        disableTransitionOnChange
+      >
         {children}
       </NextThemeProvider>
     </HeroUIClientProvider>

@@ -50,19 +50,20 @@ export function TicketChat({ ticketId }: { ticketId: string }) {
   }
 
   return (
-    <Card className="h-[400px] sm:h-[480px] lg:h-[520px] p-1 sm:p-2">
-      <CardHeader className="pb-2">
+    <Card className="h-[400px] border border-zinc-200/70 p-1 shadow-sm dark:border-zinc-800 sm:h-[480px] sm:p-2 lg:h-[520px]">
+      <CardHeader className="flex flex-col items-start gap-1 pb-2">
         <h3 className="text-base font-bold sm:text-lg">Chat en tiempo real</h3>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">Mensajes sincronizados por socket</p>
       </CardHeader>
       <CardBody className="flex flex-col p-2 sm:p-3">
-        <div className="mb-3 flex-1 space-y-2 sm:space-y-3 overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 p-2 sm:p-4 bg-zinc-50 dark:bg-zinc-950/50">
+        <div className="mb-3 flex-1 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700/70 dark:bg-content2/60 sm:space-y-3 sm:p-4">
           {messages.length === 0 && (
             <p className="text-center text-zinc-500 py-8 sm:py-10 text-sm">No hay mensajes aún</p>
           )}
           {messages.map((message) => (
             <article
               key={message.id}
-              className="rounded-xl bg-white dark:bg-zinc-800 p-2 sm:p-3 shadow-sm border border-zinc-100 dark:border-zinc-700"
+              className="rounded-xl border border-zinc-100 bg-white p-2 shadow-sm dark:border-zinc-700/70 dark:bg-content2 sm:p-3"
             >
               <p className="text-[13px] sm:text-[14px]">
                 {(message as { text?: string; content?: string }).text ??
@@ -88,7 +89,6 @@ export function TicketChat({ ticketId }: { ticketId: string }) {
               socket.emit("ticket.typing", { ticketId, isTyping: true });
             }}
             placeholder="Escribe un mensaje..."
-            variant="bordered"
             className="flex-1"
             size="sm"
           />

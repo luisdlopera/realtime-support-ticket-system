@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Ticket } from "@/types";
 import { StatusBadge } from "@/components/tickets/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useSocket } from "@/lib/hooks/useSocket";
 import { Input, Button, Card, CardHeader, CardBody } from "@heroui/react";
 
@@ -34,6 +35,7 @@ export default function TicketsPage() {
 
   async function createTicket(event: FormEvent) {
     event.preventDefault();
+    if (!title.trim() || !description.trim()) return;
     await api.createTicket({ title, description });
     setTitle("");
     setDescription("");
@@ -42,9 +44,12 @@ export default function TicketsPage() {
 
   return (
     <main className="space-y-4 sm:space-y-6">
-      <Card className="p-1 sm:p-2">
-        <CardHeader className="pb-2">
+      <Card className="border border-zinc-200/70 p-1 shadow-sm dark:border-zinc-700/70 dark:bg-content1 sm:p-2">
+        <CardHeader className="flex flex-col items-start gap-1 pb-2">
           <h2 className="text-base font-bold sm:text-lg">Crear ticket</h2>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Registra una solicitud y se actualizará para todos en tiempo real.
+          </p>
         </CardHeader>
         <CardBody className="p-2 sm:p-3">
           <form
@@ -56,7 +61,6 @@ export default function TicketsPage() {
               value={title}
               onValueChange={setTitle}
               placeholder="Ej: Problema con la cuenta"
-              variant="bordered"
               size="sm"
             />
             <Input
@@ -64,31 +68,35 @@ export default function TicketsPage() {
               value={description}
               onValueChange={setDescription}
               placeholder="Explica brevemente..."
-              variant="bordered"
               size="sm"
             />
-            <Button type="submit" color="primary" className="font-bold h-10 sm:h-12" size="sm">
+            <Button
+              type="submit"
+              color="primary"
+              className="h-10 font-bold shadow-sm sm:h-12"
+              size="sm"
+              isDisabled={!title.trim() || !description.trim()}
+            >
               Crear ticket
             </Button>
           </form>
         </CardBody>
       </Card>
 
-      <Card className="p-1 sm:p-2">
-        <CardHeader className="pb-2">
-          <h2 className="text-base font-bold sm:text-lg">Listado de Tickets</h2>
+      <Card className="border border-zinc-200/70 p-1 shadow-sm dark:border-zinc-700/70 dark:bg-content1 sm:p-2">
+        <CardHeader className="flex flex-col items-start gap-1 pb-2">
+          <h2 className="text-base font-bold sm:text-lg">Listado de tickets</h2>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Abre un ticket para ver su detalle y conversación.
+          </p>
         </CardHeader>
         <CardBody className="space-y-2 sm:space-y-3 p-2 sm:p-3">
-          {tickets.length === 0 && (
-            <p className="text-zinc-500 text-center py-6 sm:py-8 text-sm">
-              No hay tickets disponibles
-            </p>
-          )}
+          {tickets.length === 0 && <EmptyState type="tickets" />}
           {tickets.map((ticket) => (
             <Link
               key={ticket.id}
               href={`/tickets/${ticket.id}`}
-              className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 sm:p-4 transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
+              className="flex flex-col gap-2 rounded-xl border border-zinc-200 bg-background p-3 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-zinc-50 hover:shadow-sm dark:border-zinc-700/70 dark:hover:bg-content2 sm:flex-row sm:items-center sm:justify-between sm:p-4"
             >
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-zinc-900 dark:text-zinc-100 text-sm sm:text-base truncate">

@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-800", className)}
+      className={cn("animate-pulse rounded-md bg-zinc-200 dark:bg-content3", className)}
       {...props}
     />
   );
@@ -15,7 +15,7 @@ export { Skeleton };
 export function MetricCardSkeleton({ className }: { className?: string }) {
   return (
     <div
-      className={`rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 ${className || ""}`}
+      className={`rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700/70 dark:bg-content1 ${className || ""}`}
     >
       <Skeleton className="h-3 w-20" />
       <Skeleton className="mt-2 h-8 w-12" />

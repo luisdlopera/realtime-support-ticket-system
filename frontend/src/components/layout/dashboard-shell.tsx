@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { authStorage } from "@/lib/auth";
+import { api } from "@/lib/api";
 import { ThemeToggle } from "./theme-toggle";
 import { Button } from "@heroui/react";
 import {
@@ -16,7 +16,7 @@ import {
   ChevronRight,
   Headphones,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -31,9 +31,20 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
+  // Logout handler
+  const handleLogout = useCallback(async () => {
+    try {
+      await api.logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      router.push("/login");
+    }
+  }, [router]);
+
   useEffect(() => {
     setIsMounted(true);
-    // Check localStorage for collapsed state
+    // Check localStorage for collapsed state (UI preference, no sensitive data)
     const saved = localStorage.getItem("sidebar-collapsed");
     if (saved) setIsCollapsed(saved === "true");
   }, []);
@@ -66,9 +77,20 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
+  const currentPageTitle =
+    pathname === "/dashboard"
+      ? "Dashboard"
+      : pathname === "/tickets"
+        ? "Tickets"
+        : pathname.startsWith("/tickets/")
+          ? "Detalle del Ticket"
+          : pathname === "/linea-soporte"
+            ? "Línea de Soporte"
+            : "Support Console";
+
   if (!isMounted) {
     return (
-      <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      <div className="flex min-h-screen bg-background">
         <div className="flex flex-1 flex-col lg:ml-64">
           <main className="flex-1 p-4 lg:p-8">
             <div className="mx-auto max-w-7xl">{children}</div>
@@ -79,7 +101,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex min-h-screen bg-background">
       {/* Mobile Backdrop */}
       {isMobileMenuOpen && (
         <div
@@ -91,7 +113,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-zinc-200 bg-white shadow-xl transition-transform duration-300 ease-in-out dark:border-zinc-800 dark:bg-zinc-900/95 lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-zinc-200 bg-background/95 shadow-xl backdrop-blur-xl transition-transform duration-300 ease-in-out dark:border-zinc-800 lg:hidden ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         aria-label="Mobile navigation"
@@ -124,13 +146,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                   active
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                    : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                    ? "bg-primary text-white shadow-lg shadow-primary/20"
+                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                 }`}
                 aria-current={active ? "page" : undefined}
               >
+                {active && (
+                  <span className="absolute left-1 h-5 w-1 rounded-full bg-white/80" aria-hidden />
+                )}
                 <Icon size={18} />
                 <span className="truncate">{link.label}</span>
               </Link>
@@ -149,11 +174,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             color="danger"
             size="sm"
             startContent={<LogOut size={16} />}
-            onPress={() => {
-              authStorage.clear();
-              localStorage.removeItem("support_user");
-              router.push("/login");
-            }}
+            onPress={handleLogout}
             className="font-medium"
           >
             Cerrar sesión
@@ -163,7 +184,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {/* Desktop Sidebar - Collapsible */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 hidden flex-col border-r border-zinc-200 bg-white shadow-sm transition-all duration-300 ease-in-out dark:border-zinc-800 dark:bg-zinc-900 lg:flex ${
+        className={`fixed inset-y-0 left-0 z-50 hidden flex-col border-r border-zinc-200 bg-background/95 shadow-sm backdrop-blur-xl transition-all duration-300 ease-in-out dark:border-zinc-800 lg:flex ${
           isCollapsed ? "w-16" : "w-64"
         }`}
         aria-label="Desktop navigation"
@@ -179,7 +200,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 shrink-0">
               <Headphones size={18} className="text-white" />
             </div>
-            {!isCollapsed && <h1 className="text-lg font-bold truncate">Support</h1>}
+            {!isCollapsed && <h1 className="text-lg font-bold truncate">Support Console</h1>}
           </Link>
           {!isCollapsed && (
             <Button
@@ -215,6 +236,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 px-2 py-4">
+          {!isCollapsed && (
+            <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+              Operación
+            </p>
+          )}
           {links.map((link) => {
             const Icon = link.icon;
             const active = isActive(link.href);
@@ -222,14 +248,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                   active
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                    : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                    ? "bg-primary text-white shadow-lg shadow-primary/20"
+                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                 } ${isCollapsed ? "justify-center" : ""}`}
                 aria-current={active ? "page" : undefined}
                 title={isCollapsed ? link.label : undefined}
               >
+                {active && !isCollapsed && (
+                  <span className="absolute left-1 h-5 w-1 rounded-full bg-white/80" aria-hidden />
+                )}
                 <Icon size={18} className="shrink-0" />
                 {!isCollapsed && <span className="truncate">{link.label}</span>}
               </Link>
@@ -243,17 +272,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         >
           {isCollapsed ? (
             <>
-              <ThemeToggle />
+              <ThemeToggle compact />
               <Button
                 isIconOnly
                 variant="flat"
                 color="danger"
                 size="sm"
-                onPress={() => {
-                  authStorage.clear();
-                  localStorage.removeItem("support_user");
-                  router.push("/login");
-                }}
+                onPress={handleLogout}
                 aria-label="Cerrar sesión"
               >
                 <LogOut size={16} />
@@ -271,11 +296,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 color="danger"
                 size="sm"
                 startContent={<LogOut size={16} />}
-                onPress={() => {
-                  authStorage.clear();
-                  localStorage.removeItem("support_user");
-                  router.push("/login");
-                }}
+                onPress={handleLogout}
                 className="font-medium"
               >
                 Cerrar sesión
@@ -290,7 +311,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         className={`flex min-h-screen w-full flex-col transition-all duration-300 ${isCollapsed ? "lg:ml-16" : "lg:ml-64"}`}
       >
         {/* Mobile Header */}
-        <header className="sticky top-0 z-30 flex h-14 items-center border-b border-zinc-200 bg-white/80 px-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80 lg:hidden">
+        <header className="sticky top-0 z-30 flex h-14 items-center border-b border-zinc-200 bg-background/80 px-3 backdrop-blur-md dark:border-zinc-800 lg:hidden">
           <Button
             isIconOnly
             variant="light"
@@ -310,14 +331,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Desktop Header with collapse toggle */}
-        <header className="hidden lg:flex h-14 items-center justify-between border-b border-zinc-200 bg-white/80 px-4 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
-          <div className="flex items-center gap-2">
+        <header className="hidden lg:flex h-14 items-center justify-between border-b border-zinc-200 bg-background/80 px-4 backdrop-blur-md dark:border-zinc-800">
+          <div className="flex items-center gap-3">
             <h2 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-              {pathname === "/dashboard" && "Dashboard"}
-              {pathname === "/tickets" && "Tickets"}
-              {pathname.startsWith("/tickets/") && "Detalle del Ticket"}
-              {pathname === "/linea-soporte" && "Línea de Soporte"}
+              {currentPageTitle}
             </h2>
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+              En vivo
+            </span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-zinc-500 dark:text-zinc-400">Agente</span>

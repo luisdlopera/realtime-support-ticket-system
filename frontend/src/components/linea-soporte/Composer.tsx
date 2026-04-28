@@ -81,7 +81,6 @@ export function Composer({
             value={text}
             onValueChange={onTextChange}
             disabled={disabled}
-            variant="flat"
             radius="lg"
             size="md"
             autoComplete="off"

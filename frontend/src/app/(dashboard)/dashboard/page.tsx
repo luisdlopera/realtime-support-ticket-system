@@ -41,8 +41,8 @@ export default function DashboardPage() {
   return (
     <main className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold sm:text-xl">Dashboard</h2>
+      <div className="flex flex-col gap-1 rounded-2xl border border-zinc-200 bg-content1 p-4 shadow-sm dark:border-zinc-800">
+        <h2 className="text-lg font-semibold tracking-tight sm:text-xl">Dashboard</h2>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
           Visión general del sistema en tiempo real
         </p>
@@ -77,13 +77,13 @@ export default function DashboardPage() {
 
       {/* Quick Stats or Chart Placeholder */}
       {!isLoading && metrics && (
-        <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <section className="rounded-2xl border border-zinc-200 bg-content1 p-4 shadow-sm dark:border-zinc-700/70">
           <h3 className="mb-4 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
             Actividad reciente
           </h3>
-          <div className="flex items-center justify-center py-8 text-center">
+          <div className="flex items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-zinc-50 py-8 text-center dark:border-zinc-700/70 dark:bg-content2/60">
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              📊 Gráficos de análisis próximamente...
+              Gráficos de análisis próximamente...
               <br />
               <span className="text-xs">
                 Tickets por día, tiempo promedio de respuesta, satisfacción

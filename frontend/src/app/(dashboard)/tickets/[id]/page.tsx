@@ -46,17 +46,19 @@ export default function TicketDetailPage() {
 
   if (!ticket) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-zinc-500">Cargando ticket...</p>
+      <div className="flex items-center justify-center rounded-2xl border border-zinc-200 bg-content1 py-12 shadow-sm dark:border-zinc-700/70">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando ticket...</p>
       </div>
     );
   }
 
   return (
     <main className="grid gap-4 sm:gap-6 lg:grid-cols-[1fr_1.1fr]">
-      <section className="card space-y-4 p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <section className="space-y-4 rounded-2xl border border-zinc-200 bg-content1 p-3 shadow-sm dark:border-zinc-700/70 sm:p-4">
         <div>
-          <h2 className="text-lg font-semibold sm:text-xl break-words">{ticket.title}</h2>
+          <h2 className="break-words text-lg font-semibold tracking-tight sm:text-xl">
+            {ticket.title}
+          </h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
             Creado: {new Date(ticket.createdAt).toLocaleDateString()}
           </p>
