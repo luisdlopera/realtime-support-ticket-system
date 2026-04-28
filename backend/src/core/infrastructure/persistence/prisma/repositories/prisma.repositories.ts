@@ -48,6 +48,42 @@ export class PrismaUserRepository implements UserRepositoryPort {
       orderBy: { name: "asc" },
     });
   }
+
+  async updatePasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordResetToken: token,
+        passwordResetExpires: expiresAt,
+      },
+    });
+  }
+
+  async findByPasswordResetToken(token: string) {
+    return this.prisma.user.findFirst({
+      where: {
+        passwordResetToken: token,
+        passwordResetExpires: { gt: new Date() },
+      },
+    });
+  }
+
+  async updatePassword(userId: string, passwordHash: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+  }
+
+  async clearPasswordResetToken(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordResetToken: null,
+        passwordResetExpires: null,
+      },
+    });
+  }
 }
 
 @Injectable()
