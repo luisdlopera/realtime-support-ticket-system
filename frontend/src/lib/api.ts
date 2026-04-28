@@ -78,7 +78,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
             .then(async (newResponse) => {
               if (!newResponse.ok) {
                 const payload = await newResponse.text();
-                reject(new Error(payload || "Request failed"));
+                const isHtml = payload.trim().startsWith("<") || payload.trim().startsWith("<!DOCTYPE");
+                const errorMessage = isHtml ? "Server error occurred" : (payload || "Request failed");
+                reject(new Error(errorMessage));
                 return;
               }
               if (newResponse.status === 204) {
@@ -95,7 +97,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const payload = await response.text();
-    throw new Error(payload || "Request failed");
+    // Evitar mostrar HTML en errores al usuario
+    const isHtml = payload.trim().startsWith("<") || payload.trim().startsWith("<!DOCTYPE");
+    const errorMessage = isHtml ? "Server error occurred" : (payload || "Request failed");
+    throw new Error(errorMessage);
   }
 
   if (response.status === 204) {
@@ -192,10 +197,12 @@ export const api = {
       headers: authHeader(),
       body: fd,
     }).then(async (response) => {
-      if (!response.ok) {
-        const payload = await response.text();
-        throw new Error(payload || "Request failed");
-      }
+    if (!response.ok) {
+      const payload = await response.text();
+      const isHtml = payload.trim().startsWith("<") || payload.trim().startsWith("<!DOCTYPE");
+      const errorMessage = isHtml ? "Server error occurred" : (payload || "Request failed");
+      throw new Error(errorMessage);
+    }
       return response.json() as Promise<TicketMessage>;
     });
   },
