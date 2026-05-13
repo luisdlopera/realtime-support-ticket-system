@@ -6,6 +6,39 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 let isRefreshing = false;
 let refreshSubscribers: Array<(token: string) => void> = [];
 
+function getRetryAfterMs(response: Response): number {
+  const retryAfter = response.headers.get("Retry-After");
+  if (!retryAfter) return 0;
+
+  const seconds = Number(retryAfter);
+  if (!Number.isNaN(seconds)) {
+    return Math.max(0, seconds * 1000);
+  }
+
+  const dateMs = new Date(retryAfter).getTime();
+  if (Number.isNaN(dateMs)) return 0;
+  return Math.max(0, dateMs - Date.now());
+}
+
+async function extractErrorMessage(response: Response): Promise<string> {
+  const payload = await response.text();
+  const trimmed = payload.trim();
+  const isHtml = trimmed.startsWith("<") || trimmed.startsWith("<!DOCTYPE");
+
+  if (isHtml) return "Server error occurred";
+
+  try {
+    const parsed = JSON.parse(trimmed) as { message?: string | string[]; error?: string };
+    if (Array.isArray(parsed.message)) return parsed.message.join(", ");
+    if (typeof parsed.message === "string" && parsed.message.length > 0) return parsed.message;
+    if (typeof parsed.error === "string" && parsed.error.length > 0) return parsed.error;
+  } catch {
+    // ignore parse errors and fall through
+  }
+
+  return trimmed || "Request failed";
+}
+
 function subscribeToRefresh(callback: (token: string) => void) {
   refreshSubscribers.push(callback);
 }
@@ -36,6 +69,9 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const shouldRetry429 = method === "GET";
+
   const makeRequest = async (accessToken: string | null): Promise<Response> => {
     return fetch(`${API_URL}${path}`, {
       ...init,
@@ -51,6 +87,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   const token = authStorage.getToken();
   let response = await makeRequest(token);
+
+  if (response.status === 429 && shouldRetry429) {
+    const retryAfterMs = getRetryAfterMs(response);
+    const delayMs = retryAfterMs > 0 ? retryAfterMs : 1000;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    response = await makeRequest(token);
+  }
 
   // Si el token expiró (401), intentar refresh
   if (response.status === 401 && !path.includes("/auth/refresh")) {
@@ -77,9 +120,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
           makeRequest(newToken)
             .then(async (newResponse) => {
               if (!newResponse.ok) {
-                const payload = await newResponse.text();
-                const isHtml = payload.trim().startsWith("<") || payload.trim().startsWith("<!DOCTYPE");
-                const errorMessage = isHtml ? "Server error occurred" : (payload || "Request failed");
+                const errorMessage = await extractErrorMessage(newResponse);
                 reject(new Error(errorMessage));
                 return;
               }
@@ -96,10 +137,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    const payload = await response.text();
-    // Evitar mostrar HTML en errores al usuario
-    const isHtml = payload.trim().startsWith("<") || payload.trim().startsWith("<!DOCTYPE");
-    const errorMessage = isHtml ? "Server error occurred" : (payload || "Request failed");
+    const errorMessage = await extractErrorMessage(response);
     throw new Error(errorMessage);
   }
 

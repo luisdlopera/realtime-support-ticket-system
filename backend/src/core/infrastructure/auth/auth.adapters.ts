@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { PrismaClient } from "@prisma/client";
 import * as bcrypt from "bcrypt";
 import * as crypto from "crypto";
 import {
@@ -9,6 +8,7 @@ import {
   TokenPair,
   RefreshTokenRepositoryPort,
 } from "../../application/ports/ports";
+import { PrismaService } from "../persistence/prisma/prisma.service";
 
 @Injectable()
 export class BcryptPasswordHasher implements PasswordHasherPort {
@@ -57,7 +57,7 @@ export class JwtTokenService implements TokenServicePort {
 
 @Injectable()
 export class PrismaRefreshTokenRepository implements RefreshTokenRepositoryPort {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(data: {
     token: string;

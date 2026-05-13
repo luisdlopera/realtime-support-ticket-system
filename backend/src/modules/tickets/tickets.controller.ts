@@ -62,6 +62,7 @@ export class TicketsController {
   }
 
   @Get("metrics/dashboard")
+  @Throttle({ default: { limit: 300, ttl: 60000 } })
   @Roles("AGENT", "ADMIN")
   metrics() {
     return this.getDashboardMetricsUseCase.execute();

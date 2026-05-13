@@ -15,23 +15,37 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isRequestInFlight = false;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
     async function loadMetrics() {
+      if (isRequestInFlight) return;
+      isRequestInFlight = true;
       try {
         const data = await api.dashboardMetrics();
         setMetrics(data as DashboardMetrics);
+      } catch {
+        setMetrics(null);
       } finally {
+        isRequestInFlight = false;
         setIsLoading(false);
       }
     }
 
     void loadMetrics();
 
-    const refresh = () => void loadMetrics();
+    const refresh = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        void loadMetrics();
+      }, 500);
+    };
     socket.on("ticket.created", refresh);
     socket.on("ticket.assigned", refresh);
     socket.on("ticket.status.changed", refresh);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       socket.off("ticket.created", refresh);
       socket.off("ticket.assigned", refresh);
       socket.off("ticket.status.changed", refresh);

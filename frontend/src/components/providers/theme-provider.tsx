@@ -9,8 +9,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     <HeroUIClientProvider>
       <NextThemeProvider
         attribute="class"
-        defaultTheme="dark"
-        enableSystem={true}
+        defaultTheme="light"
+        forcedTheme="light"
+        enableSystem={false}
         enableColorScheme={true}
         disableTransitionOnChange
       >

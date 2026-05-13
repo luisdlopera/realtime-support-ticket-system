@@ -84,6 +84,19 @@ Services:
 - Backend API: [http://localhost:3001/api](http://localhost:3001/api)
 - Health: [http://localhost:3001/api/health](http://localhost:3001/api/health)
 
+### One command (dev + migrate + seed)
+
+```bash
+make dev-seeded
+```
+
+Default host ports in dev mode use spaced ranges and leave one intermediate fallback per service:
+
+- Frontend: `7001` (fallback `7002`)
+- Backend: `7003` (fallback `7004`)
+- Postgres: `7005` (fallback `7006`)
+- Redis: `7007` (fallback `7008`)
+
 The backend runs `prisma migrate deploy` on start. If you had an old database from `prisma db push` before migrations were added, reset the volume once:
 
 ```bash

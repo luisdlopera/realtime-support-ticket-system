@@ -73,6 +73,9 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/support_test
         run: npm run prisma:migrate:deploy
+      
+      - name: Run tests
+        run: npm run test --silent
 
   frontend:
     name: Frontend CI

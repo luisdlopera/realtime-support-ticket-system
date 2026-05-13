@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: support
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-7005}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -20,7 +20,7 @@ services:
     image: redis:7-alpine
     container_name: support-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-7007}:6379"
 
   backend:
     build:
@@ -32,7 +32,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/support
       REDIS_URL: redis://redis:6379
       JWT_SECRET: super-secret-key
-      FRONTEND_URL: http://localhost:3002
+      FRONTEND_URL: http://localhost:${FRONTEND_PORT:-7001}
       R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
@@ -43,7 +43,7 @@ services:
       WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
       WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
     ports:
-      - "3001:3001"
+      - "${BACKEND_PORT:-7003}:3001"
     volumes:
       - ./backend/src:/app/src:ro
       - ./backend/prisma:/app/prisma
@@ -59,10 +59,10 @@ services:
     working_dir: /app
     command: sh -c "npm install && npm run dev"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3001/api
-      NEXT_PUBLIC_SOCKET_URL: http://localhost:3001/realtime
+      NEXT_PUBLIC_API_URL: http://localhost:${BACKEND_PORT:-7003}/api
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:${BACKEND_PORT:-7003}/realtime
     ports:
-      - "3002:3000"
+      - "${FRONTEND_PORT:-7001}:3000"
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules

@@ -20,6 +20,7 @@ help:
 	@echo "  prod-deploy   - Deploy to production (requires .env configured)"
 	@echo "  db-migrate    - Run database migrations"
 	@echo "  db-seed       - Seed database with demo data"
+	@echo "  dev-seeded    - Start dev stack, migrate and seed in one command"
 
 # Installation
 install:
@@ -32,6 +33,10 @@ install:
 dev:
 	@echo "Starting development environment..."
 	docker-compose -f docker-compose.dev.yml up -d
+
+dev-seeded:
+	@echo "Starting dev stack with migrate + seed..."
+	./scripts/start-dev-seeded.sh
 
 # Build
 build:
