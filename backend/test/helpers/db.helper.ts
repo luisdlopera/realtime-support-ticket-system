@@ -24,7 +24,7 @@ export function prepareDatabase() {
   // Default for local developer: use SQLite file and push schema (fast, no docker required)
   const tmpDir = path.join(repoRoot, 'tmp');
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-  const sqliteRel = './tmp/test.db';
+  const sqliteRel = 'file:./tmp/test.db';
   const testSchemaPath = path.join(tmpDir, 'schema.test.prisma');
 
   // read original schema and replace datasource with sqlite datasource for local tests
