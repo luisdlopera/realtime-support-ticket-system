@@ -23,12 +23,17 @@ describe('UserRepository (integration)', () => {
       const { prepareDatabase } = require('../../../test/helpers/db.helper');
       prepareDatabase();
 
-      prisma = new PrismaClient();
-      await prisma.$connect();
-    } catch (e) {
-      console.error('Integration beforeAll error:', e);
-      throw e;
-    }
+    prisma = new PrismaClient();
+    await prisma.$connect();
+    // restore schema after tests finish
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { restoreDatabaseSchema } = require('../../../test/helpers/db.helper');
+    // attach restore to global teardown
+    (global as any).__restoreDbSchema = restoreDatabaseSchema;
+  } catch (e) {
+    console.error('Integration beforeAll error:', e);
+    throw e;
+  }
   }, 60000);
 
   afterAll(async () => {
@@ -41,6 +46,12 @@ describe('UserRepository (integration)', () => {
       await stopContainers(containers);
     } catch (e) {
       console.warn('Error stopping containers', e);
+    }
+    try {
+      const restore = (global as any).__restoreDbSchema;
+      if (restore) restore();
+    } catch (e) {
+      console.warn('Error restoring prisma schema', e);
     }
   }, 60000);
 

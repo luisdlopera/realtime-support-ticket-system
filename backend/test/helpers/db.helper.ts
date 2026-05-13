@@ -38,4 +38,26 @@ export function prepareDatabase() {
   const envObj = { ...process.env, DATABASE_URL: process.env.DATABASE_URL };
   console.log('[db.helper] running prisma db push with testSchema=', testSchemaPath);
   execSync('npx prisma db push --schema=' + testSchemaPath, { cwd: repoRoot, stdio: 'inherit', env: envObj });
+
+  // Overwrite the default prisma/schema.prisma with the test schema so PrismaClient uses sqlite at runtime
+  const prismaSchemaPath = path.join(repoRoot, 'prisma', 'schema.prisma');
+  const backupPath = path.join(tmpDir, 'schema.backup.prisma');
+  if (fs.existsSync(prismaSchemaPath)) {
+    fs.copyFileSync(prismaSchemaPath, backupPath);
+  }
+  fs.copyFileSync(testSchemaPath, prismaSchemaPath);
+  // regenerate client for the test schema
+  execSync('npx prisma generate --schema=' + prismaSchemaPath, { cwd: repoRoot, stdio: 'inherit', env: envObj });
+}
+
+export function restoreDatabaseSchema() {
+  const repoRoot = path.resolve(__dirname, '..', '..');
+  const tmpDir = path.join(repoRoot, 'tmp');
+  const backupPath = path.join(tmpDir, 'schema.backup.prisma');
+  const prismaSchemaPath = path.join(repoRoot, 'prisma', 'schema.prisma');
+  if (fs.existsSync(backupPath)) {
+    fs.copyFileSync(backupPath, prismaSchemaPath);
+    // regenerate client for original schema
+    execSync('npx prisma generate --schema=' + prismaSchemaPath, { cwd: repoRoot, stdio: 'inherit', env: { ...process.env } });
+  }
 }
