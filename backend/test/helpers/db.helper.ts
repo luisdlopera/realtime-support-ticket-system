@@ -4,14 +4,13 @@ import path from 'path';
 export function prepareDatabase() {
   const dbUrl = process.env.DATABASE_URL;
   const repoRoot = path.resolve(__dirname, '..', '..');
-  if (dbUrl && dbUrl.includes('postgres')) {
-    // In CI or dockerised environment use migrations
+  // If running in CI, prefer actual Postgres migrations (CI provides services)
+  if (dbUrl && dbUrl.includes('postgres') && process.env.CI) {
     execSync('npx prisma migrate deploy', { cwd: repoRoot, stdio: 'inherit' });
     return;
   }
 
-  // Default: use SQLite in-memory to run tests quickly without docker.
-  // Use a file-based sqlite for Prisma so it can apply schema with db push.
+  // Default for local developer: use SQLite file and push schema (fast, no docker required)
   process.env.DATABASE_URL = process.env.DATABASE_URL || 'file:./tmp/test.db';
-  execSync('npx prisma db push --preview-feature', { cwd: repoRoot, stdio: 'inherit' });
+  execSync('npx prisma db push', { cwd: repoRoot, stdio: 'inherit' });
 }
