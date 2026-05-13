@@ -209,12 +209,12 @@ export class PrismaTicketRepository implements TicketRepositoryPort {
       const s = params.search.trim();
       and.push({
         OR: [
-          { title: { contains: s, mode: "insensitive" } },
-          { description: { contains: s, mode: "insensitive" } },
-          { whatsappContact: { is: { phoneE164: { contains: s } } } },
-          { whatsappContact: { is: { profileName: { contains: s, mode: "insensitive" } } } },
+          ({ title: { contains: s, mode: "insensitive" } } as any),
+          ({ description: { contains: s, mode: "insensitive" } } as any),
+          ({ whatsappContact: { is: { phoneE164: { contains: s } } } } as any),
+          ({ whatsappContact: { is: { profileName: { contains: s, mode: "insensitive" } } } } as any),
         ],
-      });
+      } as any);
     }
 
     const tickets = await this.prisma.ticket.findMany({
