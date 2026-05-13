@@ -7,28 +7,41 @@ describe('UserRepository (integration)', () => {
   let prisma: PrismaClient;
 
   beforeAll(async () => {
-    containers = await startContainers();
-    let host = 'localhost';
-    let port = 5432;
-    if (containers && (containers as any).pg) {
-      host = containers.pg.getHost();
-      port = containers.pg.getMappedPort(5432);
+    try {
+      containers = await startContainers();
+      let host = 'localhost';
+      let port = 5432;
+      if (containers && (containers as any).pg) {
+        host = containers.pg.getHost();
+        port = containers.pg.getMappedPort(5432);
+      }
+      process.env.DATABASE_URL = process.env.DATABASE_URL || `postgresql://postgres:postgres@${host}:${port}/support_test`;
+
+      // Prepare DB: either run migrations (CI/docker) or use sqlite push for local
+      // This helper will set DATABASE_URL if needed
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { prepareDatabase } = require('../../../test/helpers/db.helper');
+      prepareDatabase();
+
+      prisma = new PrismaClient();
+      await prisma.$connect();
+    } catch (e) {
+      console.error('Integration beforeAll error:', e);
+      throw e;
     }
-    process.env.DATABASE_URL = process.env.DATABASE_URL || `postgresql://postgres:postgres@${host}:${port}/support_test`;
-
-    // Prepare DB: either run migrations (CI/docker) or use sqlite push for local
-    // This helper will set DATABASE_URL if needed
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { prepareDatabase } = require('../../../test/helpers/db.helper');
-    prepareDatabase();
-
-    prisma = new PrismaClient();
-    await prisma.$connect();
   }, 60000);
 
   afterAll(async () => {
-    await prisma.$disconnect();
-    await stopContainers(containers);
+    try {
+      if (prisma) await prisma.$disconnect();
+    } catch (e) {
+      console.warn('Error disconnecting prisma', e);
+    }
+    try {
+      await stopContainers(containers);
+    } catch (e) {
+      console.warn('Error stopping containers', e);
+    }
   }, 60000);
 
   it('creates and finds a user', async () => {
