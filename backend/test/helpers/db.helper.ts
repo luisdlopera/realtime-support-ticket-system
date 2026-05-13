@@ -24,15 +24,17 @@ export function prepareDatabase() {
   // Default for local developer: use SQLite file and push schema (fast, no docker required)
   const tmpDir = path.join(repoRoot, 'tmp');
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-  const sqliteFile = path.join(tmpDir, 'test.db');
+  const sqliteRel = './tmp/test.db';
   const testSchemaPath = path.join(tmpDir, 'schema.test.prisma');
 
   // read original schema and replace datasource with sqlite datasource for local tests
   const originalSchema = fs.readFileSync(schemaPath, 'utf-8');
-  const modifiedSchema = originalSchema.replace(/provider\s*=\s*"postgresql"/i, 'provider = "sqlite"').replace(/url\s*=\s*env\(.*\)/i, `url = "${sqliteFile}"`);
+  const modifiedSchema = originalSchema
+    .replace(/provider\s*=\s*"postgresql"/i, 'provider = "sqlite"')
+    .replace(/url\s*=\s*env\(.*\)/i, `url = "${sqliteRel}"`);
   fs.writeFileSync(testSchemaPath, modifiedSchema, 'utf-8');
 
-  process.env.DATABASE_URL = `file:${sqliteFile}`;
+  process.env.DATABASE_URL = `file:./tmp/test.db`;
   const envObj = { ...process.env, DATABASE_URL: process.env.DATABASE_URL };
   console.log('[db.helper] running prisma db push with testSchema=', testSchemaPath);
   execSync('npx prisma db push --schema=' + testSchemaPath, { cwd: repoRoot, stdio: 'inherit', env: envObj });
