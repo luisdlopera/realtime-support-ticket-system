@@ -7,7 +7,15 @@ import { PrismaClient } from '@prisma/client';
 import { startContainers, stopContainers } from '../../../test/helpers/testcontainers.helper';
 import { execSync } from 'child_process';
 
+import { shouldRunIntegration } from '../../../test/helpers/integration.guard';
+
 describe('Socket integration', () => {
+  if (!shouldRunIntegration()) {
+    it('skipped integration tests (USE_POSTGRES or CI not set)', () => {
+      expect(true).toBe(true);
+    });
+    return;
+  }
   let app: INestApplication;
   let url: string;
   let prisma: PrismaClient;
