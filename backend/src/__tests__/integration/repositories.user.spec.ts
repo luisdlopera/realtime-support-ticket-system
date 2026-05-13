@@ -16,8 +16,11 @@ describe('UserRepository (integration)', () => {
     }
     process.env.DATABASE_URL = process.env.DATABASE_URL || `postgresql://postgres:postgres@${host}:${port}/support_test`;
 
-    // Run prisma migrate deploy
-    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+    // Prepare DB: either run migrations (CI/docker) or use sqlite push for local
+    // This helper will set DATABASE_URL if needed
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { prepareDatabase } = require('../../../test/helpers/db.helper');
+    prepareDatabase();
 
     prisma = new PrismaClient();
     await prisma.$connect();

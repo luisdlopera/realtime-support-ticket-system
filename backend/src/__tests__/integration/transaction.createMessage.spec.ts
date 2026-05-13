@@ -15,7 +15,8 @@ describe('CreateMessage transaction (integration)', () => {
       port = containers.pg.getMappedPort(5432);
     }
     process.env.DATABASE_URL = process.env.DATABASE_URL || `postgresql://postgres:postgres@${host}:${port}/support_test`;
-    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+    const { prepareDatabase } = require('../../../test/helpers/db.helper');
+    prepareDatabase();
     prisma = new PrismaClient();
     await prisma.$connect();
   }, 60000);
