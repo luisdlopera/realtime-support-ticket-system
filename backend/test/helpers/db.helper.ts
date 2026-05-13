@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 
 export function prepareDatabase() {
   const dbUrl = process.env.DATABASE_URL;
