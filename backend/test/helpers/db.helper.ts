@@ -13,7 +13,9 @@ export function prepareDatabase() {
     // If DATABASE_URL provided and points to postgres, run migrations
     const envDb = process.env.DATABASE_URL;
     if (envDb && envDb.includes('postgres')) {
-      execSync('npx prisma migrate deploy --schema=' + schemaPath, { cwd: repoRoot, stdio: 'inherit', env: { ...process.env } });
+      const envObj = { ...process.env, DATABASE_URL: envDb };
+      console.log('[db.helper] running prisma migrate deploy with DATABASE_URL=', envObj.DATABASE_URL);
+      execSync('npx prisma migrate deploy --schema=' + schemaPath, { cwd: repoRoot, stdio: 'inherit', env: envObj });
       return;
     }
     // Otherwise fallthrough to sqlite
@@ -21,5 +23,7 @@ export function prepareDatabase() {
 
   // Default for local developer: use SQLite file and push schema (fast, no docker required)
   process.env.DATABASE_URL = process.env.DATABASE_URL || `file:${path.join(repoRoot, 'tmp', 'test.db')}`;
-  execSync('npx prisma db push --schema=' + schemaPath, { cwd: repoRoot, stdio: 'inherit', env: { ...process.env } });
+  const envObj = { ...process.env, DATABASE_URL: process.env.DATABASE_URL };
+  console.log('[db.helper] running prisma db push with DATABASE_URL=', envObj.DATABASE_URL);
+  execSync('npx prisma db push --schema=' + schemaPath, { cwd: repoRoot, stdio: 'inherit', env: envObj });
 }
