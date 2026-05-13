@@ -8,9 +8,13 @@ describe('CreateMessage transaction (integration)', () => {
 
   beforeAll(async () => {
     containers = await startContainers();
-    const host = containers.pg.getHost();
-    const port = containers.pg.getMappedPort(5432);
-    process.env.DATABASE_URL = `postgresql://postgres:postgres@${host}:${port}/support_test`;
+    let host = 'localhost';
+    let port = 5432;
+    if (containers && (containers as any).pg) {
+      host = containers.pg.getHost();
+      port = containers.pg.getMappedPort(5432);
+    }
+    process.env.DATABASE_URL = process.env.DATABASE_URL || `postgresql://postgres:postgres@${host}:${port}/support_test`;
     execSync('npx prisma migrate deploy', { stdio: 'inherit' });
     prisma = new PrismaClient();
     await prisma.$connect();
