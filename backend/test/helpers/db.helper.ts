@@ -8,11 +8,11 @@ export function prepareDatabase() {
   const schemaPath = path.join(repoRoot, 'prisma', 'schema.prisma');
   if (dbUrl && dbUrl.includes('postgres') && process.env.CI) {
     // For CI with postgres services, run migrations with DATABASE_URL injected to ensure it is used
-    execSync(`DATABASE_URL='${process.env.DATABASE_URL}' npx prisma migrate deploy --schema=${schemaPath}`, { cwd: repoRoot, stdio: 'inherit', shell: true });
+    execSync(`DATABASE_URL='${process.env.DATABASE_URL}' npx prisma migrate deploy --schema=${schemaPath}`, { cwd: repoRoot, stdio: 'inherit' });
     return;
   }
 
   // Default for local developer: use SQLite file and push schema (fast, no docker required)
   process.env.DATABASE_URL = process.env.DATABASE_URL || `file:${path.join(repoRoot, 'tmp', 'test.db')}`;
-  execSync(`DATABASE_URL='${process.env.DATABASE_URL}' npx prisma db push --schema=${schemaPath}`, { cwd: repoRoot, stdio: 'inherit', shell: true });
+  execSync(`DATABASE_URL='${process.env.DATABASE_URL}' npx prisma db push --schema=${schemaPath}`, { cwd: repoRoot, stdio: 'inherit' });
 }
